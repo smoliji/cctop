@@ -699,6 +699,12 @@ test('a long plugin name gives way to the skill', () => {
   assert.match(f, /…:issue-tracker-get-issue /);
 });
 
+test('the overview cuts a plugin before the skill like the skills tab', () => {
+  const name = 'issue-tracker-get-issue:issue-tracker-get-issue';
+  const f = frame(80, 30, { ...overview, topSkills: [{ name, count: 9 }] });
+  assert.match(f, /…:issue-tracker-get-issue +9/);
+});
+
 const titles = (t: { columns: { title: string }[] }) => t.columns.map((c) => c.title);
 
 test('skillTable shares the width between name, bar and columns', () => {

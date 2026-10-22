@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 import type { Overview, Period, Ranked } from '../types.js';
 import { INDENT, PANEL_GAP, type Panel } from '../layout.js';
 import { BLOCK, fit, formatTokens, MUTED } from '../format.js';
+import { splitName } from './Skills.js';
 
 const MIN_SHARE = 6;
 
@@ -52,26 +53,29 @@ interface Item {
   key: string;
   name: string;
   prefix?: string;
+  /** `plugin:name`, drawn with the plugin muted and cut first. */
+  scoped?: boolean;
   value: string;
   color?: string;
   share?: number;
 }
 
 function items(panel: Panel, overview: Overview, palette: Map<string, string>): Item[] {
-  const ranked = (list: Ranked[]): Item[] =>
+  const ranked = (list: Ranked[], scoped = false): Item[] =>
     list.map((r) => ({
       key: r.name,
       name: r.server ?? r.name,
       ...(r.server ? { prefix: 'mcp ' } : {}),
+      scoped,
       value: String(r.count),
     }));
   switch (panel) {
     case 'skills':
-      return ranked(overview.topSkills);
+      return ranked(overview.topSkills, true);
     case 'tools':
       return ranked(overview.topTools);
     case 'agents':
-      return ranked(overview.topAgents);
+      return ranked(overview.topAgents, true);
     case 'projects':
       return overview.projects.map((p) => ({ key: p.path, name: p.name, value: formatTokens(p.tokens) }));
     case 'models':
@@ -102,7 +106,7 @@ function Items({ items, width }: { items: Item[]; width: number }) {
     return (
       <Text key={item.key} wrap="truncate-end">
         {prefix && <Text color="yellow">{prefix}</Text>}
-        <Text color={item.color}>{fit(item.name, name - prefix.length)}</Text> {item.value.padStart(value)}
+        <Name item={item} width={name - prefix.length} /> {item.value.padStart(value)}
         {bar > 0 && (
           <>
             {' '}
@@ -113,4 +117,15 @@ function Items({ items, width }: { items: Item[]; width: number }) {
       </Text>
     );
   });
+}
+
+function Name({ item, width }: { item: Item; width: number }) {
+  if (!item.scoped) return <Text color={item.color}>{fit(item.name, width)}</Text>;
+  const { plugin, skill } = splitName(item.name, width);
+  return (
+    <Text>
+      <Text color={MUTED}>{plugin}</Text>
+      {skill}
+    </Text>
+  );
 }
