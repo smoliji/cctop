@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { LimitMeter, PlanUsage } from '../types.js';
-import { fit, formatDuration, meterColor } from '../format.js';
+import { BLOCK, fit, formatDuration, meterColor } from '../format.js';
 import { INDENT } from '../layout.js';
 
 const STALE_MS = 15 * 60_000;
@@ -48,15 +48,16 @@ function Meter({ meter, now, bar, label }: { meter: LimitMeter; now: number; bar
   const filled = Math.round((percent / 100) * bar);
   const reset =
     meter.resetsAt === null ? '' : expired ? 'window reset' : `reset ${formatDuration(meter.resetsAt - now)}`;
+  const color = meterColor(percent);
   return (
     <Text wrap="truncate-end">
       {fit(meter.label, label)}
       {'  '}
-      <Text color={meterColor(percent)}>{'━'.repeat(filled)}</Text>
-      <Text color="gray" dimColor>
-        {'─'.repeat(bar - filled)}
+      <Text color={color}>{BLOCK.repeat(filled)}</Text>
+      <Text color="gray">{'─'.repeat(bar - filled)}</Text>
+      <Text color={color} bold>
+        {`${Math.round(percent)}%`.padStart(5)}
       </Text>
-      {`${Math.round(percent)}%`.padStart(5)}
       {'  '}
       <Text color="gray">{reset.padStart(14)}</Text>
     </Text>

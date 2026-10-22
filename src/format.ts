@@ -65,12 +65,13 @@ function parseDate(date: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
-// One hue per model family; the newest version gets the strong shade, older ones fade.
+// One hue per model family; the newest version gets the vivid shade, older ones a greyed one.
+// Both keep the same luminance, picked for at least 3:1 contrast on light and dark backgrounds.
 const FAMILIES: [string, string[]][] = [
-  ['opus', ['#2f7fd8', '#8db8ea']],
-  ['fable', ['#c99a1a', '#e6cc78']],
-  ['haiku', ['#e0742e', '#f0b083']],
-  ['sonnet', ['#9a52d0', '#c9a0e8']],
+  ['opus', ['#317fd8', '#6080a5']],
+  ['fable', ['#aa8015', '#978555']],
+  ['haiku', ['#da641f', '#a87d65']],
+  ['sonnet', ['#9e59cf', '#906aab']],
 ];
 
 export function modelPalette(models: string[]): Map<string, string> {
@@ -95,6 +96,9 @@ function newestFirst(a: string, b: string): number {
   }
   return a.localeCompare(b);
 }
+
+/** A lower block leaves a sliver of background between stacked rows, so bars stay apart. */
+export const BLOCK = '▆';
 
 export function meterColor(percent: number): 'green' | 'yellow' | 'red' {
   if (percent < 60) return 'green';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { DayRow, Overview } from '../types.js';
-import { barCells, formatCost, formatDay, formatTokens, isWeekend, splitCells } from '../format.js';
+import { BLOCK, barCells, formatCost, formatDay, formatTokens, isWeekend, splitCells } from '../format.js';
 import { INDENT } from '../layout.js';
 
 interface Props {
@@ -59,9 +59,6 @@ interface DayProps {
   palette: Map<string, string>;
 }
 
-// A lower block leaves a sliver of background between rows, so stacked days stay apart.
-const DAY_CELL = '▆';
-
 function Day({ day, today, models, peak, bar, palette }: DayProps) {
   const label = formatDay(day.date);
   const labelColor = today ? 'cyan' : isWeekend(day.date) ? 'gray' : undefined;
@@ -83,7 +80,7 @@ function Day({ day, today, models, peak, bar, palette }: DayProps) {
           {models.map((m, i) =>
             cells[i] ? (
               <Text key={m} color={palette.get(m)}>
-                {DAY_CELL.repeat(cells[i]!)}
+                {BLOCK.repeat(cells[i]!)}
               </Text>
             ) : null,
           )}

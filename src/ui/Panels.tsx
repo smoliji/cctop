@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { ModelShare, Overview, Ranked } from '../types.js';
 import { INDENT, type Panel } from '../layout.js';
-import { fit } from '../format.js';
+import { BLOCK, fit } from '../format.js';
 
 const GAP = 1;
 const SHARE_BAR = 6;
@@ -73,10 +73,8 @@ function ModelRow({ model, width, color }: { model: ModelShare; width: number; c
   return (
     <Text wrap="truncate-end">
       <Text color={color}>{name}</Text> {percent}{' '}
-      <Text color={color}>{'━'.repeat(filled)}</Text>
-      <Text color="gray" dimColor>
-        {'─'.repeat(SHARE_BAR - filled)}
-      </Text>
+      <Text color={color}>{BLOCK.repeat(filled)}</Text>
+      <Text color="gray">{'─'.repeat(SHARE_BAR - filled)}</Text>
     </Text>
   );
 }

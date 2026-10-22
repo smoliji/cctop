@@ -17,7 +17,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
   inside it (from `attributionSkill`), last use, model vs typed invocations and
   the lifetime count; sortable with `s` and scrollable.
 - Layout adapts to the terminal: frame capped at 120 columns, fewer days and
-  panels on small terminals, models of one family in shades of one color.
+  panels on small terminals, models of one family in shades of one color that
+  keep at least 3:1 contrast on light and dark backgrounds.
 - Period switch (`p`: today / 7d / 30d), manual refresh (`r`) and auto refresh
   every `--interval` seconds.
 - `--print` renders one frame and exits, `--json` dumps the computed overview,

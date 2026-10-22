@@ -1,9 +1,9 @@
  cctop 0.1.0   1 Overview   2 Skills                                         refresh 60s · 11:05:16
 
  LIMITS                                                                                cache 8m old
-   5h     ━━━━────────────────────────────────────────────   9%    reset 2h 54m
-   Week   ━━━━━━━━────────────────────────────────────────  17%    reset 2d 20h
-   Fable  ━───────────────────────────────────────────────   3%    reset 2d 20h
+   5h     ▆▆▆▆────────────────────────────────────────────   9%    reset 2h 54m
+   Week   ▆▆▆▆▆▆▆▆────────────────────────────────────────  17%    reset 2d 20h
+   Fable  ▆───────────────────────────────────────────────   3%    reset 2d 20h
 
  TOKENS · LAST 7 DAYS                                            avg 87M  peak 148M  7d 610M  $302*
    Th 22  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                                                            40M  $ 21
@@ -16,7 +16,7 @@
    ■ opus-5-5   ■ haiku-4-5   ■ fable-5-1   ■ sonnet-5-5
 
  TOP SKILLS · 7d                  TOOLS · 7d                       MODELS · 7d
-   workflow-authoring           8   Bash                      4273   opus-5-5            93% ━━━━━━
+   workflow-authoring           8   Bash                      4273   opus-5-5            93% ▆▆▆▆▆▆
    standup-notes                7   mcp Slack                 1409   haiku-4-5            6% ──────
    writing-plans                6   ToolSearch                 220   fable-5-1            1% ──────
    distill                      6   mcp linear                 217   sonnet-5-5           0% ──────
