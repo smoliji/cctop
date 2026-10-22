@@ -1,0 +1,10 @@
+{
+  "cachedUsageUtilization": {
+    "fetchedAtMs": 1760000000000,
+    "utilization": {
+      "five_hour": { "utilization": 30.5, "resets_at": "2025-10-09T12:00:00Z" },
+      "seven_day": { "utilization": 8, "resets_at": null },
+      "extra_usage": { "is_enabled": false }
+    }
+  }
+}

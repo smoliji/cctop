@@ -1,0 +1,124 @@
+{
+  "source": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+  "models": {
+    "claude-fable-5": {
+      "input": 0.00001,
+      "output": 0.00005,
+      "cacheRead": 0.000001,
+      "cacheWrite5m": 0.0000125,
+      "cacheWrite1h": 0.00002
+    },
+    "claude-fable-5-1": {
+      "input": 0.00001,
+      "output": 0.00005,
+      "cacheRead": 2.5e-7,
+      "cacheWrite5m": 0.0000125,
+      "cacheWrite1h": 0.00002
+    },
+    "claude-haiku-4-5": {
+      "input": 0.000001,
+      "output": 0.000005,
+      "cacheRead": 1e-7,
+      "cacheWrite5m": 0.00000125,
+      "cacheWrite1h": 0.000002
+    },
+    "claude-haiku-5-5": {
+      "input": 1e-7,
+      "output": 5e-7,
+      "cacheRead": 1e-8,
+      "cacheWrite5m": 1.25e-7,
+      "cacheWrite1h": 2e-7
+    },
+    "claude-mythos-5": {
+      "input": 0.00001,
+      "output": 0.00005,
+      "cacheRead": 0.000001,
+      "cacheWrite5m": 0.0000125,
+      "cacheWrite1h": 0.00002
+    },
+    "claude-mythos-5-1": {
+      "input": 0.00001,
+      "output": 0.00005,
+      "cacheRead": 2.5e-7,
+      "cacheWrite5m": 0.0000125,
+      "cacheWrite1h": 0.00002
+    },
+    "claude-mythos-preview": {
+      "input": 0.00001,
+      "output": 0.00005,
+      "cacheRead": 0.000001,
+      "cacheWrite5m": 0.0000125,
+      "cacheWrite1h": 0.00002
+    },
+    "claude-opus-4-5": {
+      "input": 0.000005,
+      "output": 0.000025,
+      "cacheRead": 5e-7,
+      "cacheWrite5m": 0.00000625,
+      "cacheWrite1h": 0.00001
+    },
+    "claude-opus-4-6": {
+      "input": 0.000005,
+      "output": 0.000025,
+      "cacheRead": 5e-7,
+      "cacheWrite5m": 0.00000625,
+      "cacheWrite1h": 0.00001
+    },
+    "claude-opus-4-7": {
+      "input": 0.000005,
+      "output": 0.000025,
+      "cacheRead": 5e-7,
+      "cacheWrite5m": 0.00000625,
+      "cacheWrite1h": 0.00001
+    },
+    "claude-opus-4-8": {
+      "input": 0.000005,
+      "output": 0.000025,
+      "cacheRead": 5e-7,
+      "cacheWrite5m": 0.00000625,
+      "cacheWrite1h": 0.00001
+    },
+    "claude-opus-5": {
+      "input": 0.000005,
+      "output": 0.000025,
+      "cacheRead": 5e-7,
+      "cacheWrite5m": 0.00000625,
+      "cacheWrite1h": 0.00001
+    },
+    "claude-opus-5-5": {
+      "input": 0.000004,
+      "output": 0.00002,
+      "cacheRead": 2e-7,
+      "cacheWrite5m": 0.000005,
+      "cacheWrite1h": 0.000008
+    },
+    "claude-sonnet-4-5": {
+      "input": 0.000003,
+      "output": 0.000015,
+      "cacheRead": 3e-7,
+      "cacheWrite5m": 0.00000375,
+      "cacheWrite1h": 0.000006
+    },
+    "claude-sonnet-4-6": {
+      "input": 0.000003,
+      "output": 0.000015,
+      "cacheRead": 3e-7,
+      "cacheWrite5m": 0.00000375,
+      "cacheWrite1h": 0.000006
+    },
+    "claude-sonnet-5": {
+      "input": 0.000002,
+      "output": 0.00001,
+      "cacheRead": 2e-7,
+      "cacheWrite5m": 0.0000025,
+      "cacheWrite1h": 0.000004
+    },
+    "claude-sonnet-5-5": {
+      "input": 0.000002,
+      "output": 0.00001,
+      "cacheRead": 1e-7,
+      "cacheWrite5m": 0.0000025,
+      "cacheWrite1h": 0.000004
+    }
+  }
+}
