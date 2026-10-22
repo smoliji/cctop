@@ -39,9 +39,9 @@ Keys:
 
 cctop reads local files: transcripts in <dir>/projects and the cached plan
 usage in <dir>/.claude.json, or ~/.claude.json when that does not exist. Claude
-Code updates that cache only on /usage, so on every refresh with a cache older
-than the interval cctop runs \`claude -p /usage\`, which Claude Code answers
-without a model turn and so without tokens. cctop itself never calls the API.
+Code updates that cache only on /usage, so whenever it is older than the
+interval (at least a minute) cctop runs \`claude -p /usage\`, which Claude Code
+answers without a model turn and so without tokens. cctop itself never calls the API.
 To start fast it keeps parsed token counts (no message text) in ~/.cache/cctop.
 `;
 

@@ -159,9 +159,10 @@ A few things to keep in mind:
   model that includes a model missing from that list shows no cost rather than
   a partial one.
 - **Plan limits come from Claude Code's cache.** Claude Code writes them to
-  `~/.claude.json` only when `/usage` runs, so on a refresh that finds them
-  older than the interval cctop runs `claude -p /usage --no-session-persistence`
-  in a temp dir. Print mode handles `/usage` without a model turn; if a reply
+  `~/.claude.json` only when `/usage` runs, so whenever they are older than the
+  interval (at least a minute, since Claude Code answers from its own cache
+  before that) cctop runs `claude -p /usage --no-session-persistence` in a temp
+  dir. Print mode handles `/usage` without a model turn; if a reply
   ever reports a turn or a cost, cctop shows an error instead of hiding it. The
   call takes about 2 s of CPU. Turn it off with `--no-usage`; cctop then shows
   how old the numbers are, and once a window's reset time has passed its meter
