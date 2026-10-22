@@ -1,16 +1,17 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { DayRow, Overview } from '../types.js';
-import { barCells, formatCost, formatDay, formatTokens, isWeekend, modelColor, splitCells } from '../format.js';
+import { barCells, formatCost, formatDay, formatTokens, isWeekend, splitCells } from '../format.js';
 import { INDENT } from '../layout.js';
 
 interface Props {
   overview: Overview;
   days: number;
   bar: number;
+  palette: Map<string, string>;
 }
 
-export function History({ overview, days, bar }: Props) {
+export function History({ overview, days, bar, palette }: Props) {
   const { week } = overview;
   const rows = overview.days.slice(0, days);
   const models = modelOrder(rows);
@@ -27,9 +28,9 @@ export function History({ overview, days, bar }: Props) {
       </Box>
       <Box flexDirection="column" paddingLeft={INDENT}>
         {rows.map((day, i) => (
-          <Day key={day.date} day={day} today={i === 0} models={models} peak={week.peak} bar={bar} />
+          <Day key={day.date} day={day} today={i === 0} models={models} peak={week.peak} bar={bar} palette={palette} />
         ))}
-        <Legend models={models} />
+        <Legend models={models} palette={palette} />
       </Box>
     </Box>
   );
@@ -55,9 +56,13 @@ interface DayProps {
   models: string[];
   peak: number;
   bar: number;
+  palette: Map<string, string>;
 }
 
-function Day({ day, today, models, peak, bar }: DayProps) {
+// A lower block leaves a sliver of background between rows, so stacked days stay apart.
+const DAY_CELL = '▆';
+
+function Day({ day, today, models, peak, bar, palette }: DayProps) {
   const label = formatDay(day.date);
   const labelColor = today ? 'cyan' : isWeekend(day.date) ? 'gray' : undefined;
   const length = barCells(day.tokens, peak, bar);
@@ -77,8 +82,8 @@ function Day({ day, today, models, peak, bar }: DayProps) {
         <>
           {models.map((m, i) =>
             cells[i] ? (
-              <Text key={m} color={modelColor(m)}>
-                {'█'.repeat(cells[i]!)}
+              <Text key={m} color={palette.get(m)}>
+                {DAY_CELL.repeat(cells[i]!)}
               </Text>
             ) : null,
           )}
@@ -93,14 +98,14 @@ function Day({ day, today, models, peak, bar }: DayProps) {
   );
 }
 
-function Legend({ models }: { models: string[] }) {
+function Legend({ models, palette }: { models: string[]; palette: Map<string, string> }) {
   if (models.length === 0) return <Text color="gray">no tokens in the last days</Text>;
   return (
     <Text wrap="truncate-end">
       {models.map((m, i) => (
         <Text key={m}>
           {i > 0 && '   '}
-          <Text color={modelColor(m)}>■</Text>
+          <Text color={palette.get(m)}>■</Text>
           <Text color="gray"> {m}</Text>
         </Text>
       ))}

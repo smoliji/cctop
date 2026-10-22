@@ -203,6 +203,27 @@ test('top skills merge Skill calls with skill slash commands', () => {
   ]);
 });
 
+test('skill rows join calls, typed commands, attributed turns and the lifetime count', () => {
+  const o = buildOverview(
+    data({
+      responses: [
+        response({ skill: 'commit', usage: usage({ input: 100 }) }),
+        response({ skill: 'commit', usage: usage({ output: 50 }), timestamp: NOW + 1 }),
+        response({ skill: 'commit', timestamp: daysAgo(1) }),
+      ],
+      toolCalls: [call('Skill', { skill: 'commit' })],
+      slashCommands: [command('/commit'), command('/clear')],
+    }),
+    state({ skillUsage: { commit: 40 } }),
+    'today',
+    NOW,
+  );
+  assert.equal(o.skills.length, 1);
+  const { cost, ...row } = o.skills[0]!;
+  assert.deepEqual(row, { name: 'commit', calls: 1, typed: 1, turns: 2, tokens: 150, lastUsed: NOW + 1, allTime: 40 });
+  assert.ok(cost! > 0);
+});
+
 test('top tools group MCP calls per server and keep the top 8', () => {
   const calls = [
     call('mcp__claude_ai_Gmail__send'),

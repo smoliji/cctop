@@ -7,6 +7,7 @@ import type {
   Overview,
   Period,
   Ranked,
+  SkillRow,
   TokenUsage,
   TranscriptData,
 } from './types.js';
@@ -24,19 +25,13 @@ export function buildOverview(
   const since = dayStart(now, PERIOD_DAYS[period] - 1);
   const responses = data.responses.filter((r) => r.timestamp >= since);
   const calls = data.toolCalls.filter((c) => c.timestamp >= since);
-  const commands = data.slashCommands.filter((c) => c.timestamp >= since);
 
   const usage = sumUsage(responses.map((r) => r.usage));
   const cacheIn = usage.input + usage.cacheRead + usage.cacheWrite5m + usage.cacheWrite1h;
   const peakDay = days.reduce((a, b) => (b.tokens > a.tokens ? b : a));
   const weekTokens = sum(days.map((d) => d.tokens));
 
-  const skills = new Map<string, number>();
-  for (const c of calls) if (c.name === 'Skill' && c.skill) bump(skills, c.skill);
-  for (const c of commands) {
-    const name = c.name.replace(/^\//, '');
-    if (name.includes(':') || Object.hasOwn(state.skillUsage, name)) bump(skills, name);
-  }
+  const skills = skillRows(data, since, state);
 
   const tools = new Map<string, Ranked>();
   for (const c of calls) {
@@ -66,7 +61,8 @@ export function buildOverview(
       responses: responses.length,
       subagents: new Set(responses.flatMap((r) => (r.agentId ? [r.agentId] : []))).size,
     },
-    topSkills: rank([...skills].map(([name, count]) => ({ name, count }))),
+    topSkills: rank(skills.map((s) => ({ name: s.name, count: s.calls + s.typed })).filter((s) => s.count > 0)),
+    skills,
     topTools: rank([...tools.values()]),
     models: modelShares(responses),
     usage: state.usage,
@@ -115,6 +111,41 @@ function lastDays(responses: ApiResponse[], now: number, count: number): DayRow[
     row.costs.push(costOfResponse(r));
   }
   return rows.map(({ costs, ...row }) => ({ ...row, cost: sumKnown(costs) }));
+}
+
+function skillRows(data: TranscriptData, since: number, state: ClaudeState): SkillRow[] {
+  const rows = new Map<string, SkillRow & { costs: (number | null)[] }>();
+  const touch = (name: string, timestamp: number) => {
+    let row = rows.get(name);
+    if (!row) {
+      const allTime = Object.hasOwn(state.skillUsage, name) ? state.skillUsage[name]! : null;
+      row = { name, calls: 0, typed: 0, turns: 0, tokens: 0, cost: null, lastUsed: null, allTime, costs: [] };
+      rows.set(name, row);
+    }
+    row.lastUsed = Math.max(row.lastUsed ?? 0, timestamp);
+    return row;
+  };
+
+  for (const c of data.toolCalls) {
+    if (c.timestamp >= since && c.name === 'Skill' && c.skill) touch(c.skill, c.timestamp).calls++;
+  }
+  for (const c of data.slashCommands) {
+    const name = c.name.replace(/^\//, '');
+    // Built-in commands like /clear share the slash syntax; only skills are named plugin:skill or tracked in skillUsage.
+    if (c.timestamp >= since && (name.includes(':') || Object.hasOwn(state.skillUsage, name))) {
+      touch(name, c.timestamp).typed++;
+    }
+  }
+  for (const r of data.responses) {
+    if (r.timestamp < since || !r.skill) continue;
+    const row = touch(r.skill, r.timestamp);
+    row.turns++;
+    row.tokens += tokensOf(r.usage);
+    row.costs.push(costOfResponse(r));
+  }
+  return [...rows.values()]
+    .map(({ costs, ...row }) => ({ ...row, cost: sumKnown(costs) }))
+    .sort((a, b) => b.calls + b.typed - (a.calls + a.typed) || b.tokens - a.tokens || a.name.localeCompare(b.name));
 }
 
 function modelShares(responses: ApiResponse[]): ModelShare[] {
@@ -167,10 +198,6 @@ function sumKnown(values: (number | null)[]): number | null {
 
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
-}
-
-function bump(map: Map<string, number>, key: string): void {
-  map.set(key, (map.get(key) ?? 0) + 1);
 }
 
 function rank(rows: Ranked[]): Ranked[] {

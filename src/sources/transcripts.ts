@@ -48,6 +48,7 @@ function assistant(record: Json, timestamp: number, into: FileEvents): void {
       sessionId: typeof record.sessionId === 'string' ? record.sessionId : '',
       sidechain: record.isSidechain === true,
       ...(typeof record.agentId === 'string' && { agentId: record.agentId }),
+      ...(typeof record.attributionSkill === 'string' && { skill: record.attributionSkill }),
       usage: tokens(usage),
     });
   }

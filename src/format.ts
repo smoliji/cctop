@@ -65,18 +65,35 @@ function parseDate(date: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
-export type Color = 'blue' | 'yellow' | 'cyan' | 'magenta' | 'gray';
-
-const FAMILIES: [string, Color][] = [
-  ['opus', 'blue'],
-  ['fable', 'yellow'],
-  ['haiku', 'cyan'],
-  ['sonnet', 'magenta'],
+// One hue per model family; the newest version gets the strong shade, older ones fade.
+const FAMILIES: [string, string[]][] = [
+  ['opus', ['#2f7fd8', '#8db8ea']],
+  ['fable', ['#c99a1a', '#e6cc78']],
+  ['haiku', ['#e0742e', '#f0b083']],
+  ['sonnet', ['#9a52d0', '#c9a0e8']],
 ];
 
-export function modelColor(name: string): Color {
-  const lower = name.toLowerCase();
-  return FAMILIES.find(([family]) => lower.includes(family))?.[1] ?? 'gray';
+export function modelPalette(models: string[]): Map<string, string> {
+  const palette = new Map<string, string>();
+  const unique = [...new Set(models)];
+  for (const [family, shades] of FAMILIES) {
+    unique
+      .filter((m) => m.toLowerCase().includes(family))
+      .sort(newestFirst)
+      .forEach((m, i) => palette.set(m, shades[Math.min(i, shades.length - 1)]!));
+  }
+  for (const m of unique) if (!palette.has(m)) palette.set(m, 'gray');
+  return palette;
+}
+
+function newestFirst(a: string, b: string): number {
+  const va = (a.match(/\d+/g) ?? []).map(Number);
+  const vb = (b.match(/\d+/g) ?? []).map(Number);
+  for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+    const diff = (vb[i] ?? -1) - (va[i] ?? -1);
+    if (diff) return diff;
+  }
+  return a.localeCompare(b);
 }
 
 export function meterColor(percent: number): 'green' | 'yellow' | 'red' {

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp, useInput, useWindowSize } from 'ink';
 import type { ClaudeState, Overview, Period, TranscriptData } from '../types.js';
-import { Screen } from './Screen.js';
+import { DEFAULT_VIEW, Screen, SKILLS_CHROME, TABS, type View } from './Screen.js';
+import { SKILL_SORTS } from './Skills.js';
 
 export interface Snapshot {
   data: TranscriptData;
@@ -30,6 +31,7 @@ export function App({ load, build, interval, version, now = Date.now }: Props) {
   const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>();
+  const [view, setView] = useState<View>(DEFAULT_VIEW);
 
   const rebuild = useCallback(
     (snap: Snapshot, p: Period, at: number) => {
@@ -74,10 +76,19 @@ export function App({ load, build, interval, version, now = Date.now }: Props) {
     if (input === 'q' || (key.ctrl && input === 'c')) return exit();
     if (input === 'r') return void refresh();
     if (input === 'p') {
-      const next = PERIODS[(PERIODS.indexOf(period) + 1) % PERIODS.length]!;
-      setPeriod(next);
-      if (snapshot.current) rebuild(snapshot.current, next, now());
+      const p = next(PERIODS, period);
+      setPeriod(p);
+      if (snapshot.current) rebuild(snapshot.current, p, now());
+      return;
     }
+    const tab = Number(input);
+    if (TABS[tab - 1]) return setView({ ...view, tab: TABS[tab - 1]! });
+    if (key.tab) return setView({ ...view, tab: next(TABS, view.tab) });
+    if (view.tab !== 'skills') return;
+    if (input === 's') return setView({ ...view, skillSort: next(SKILL_SORTS, view.skillSort), skillOffset: 0 });
+    const last = Math.max(0, (overview?.skills.length ?? 0) - Math.max(1, rows - SKILLS_CHROME));
+    const step = key.upArrow || input === 'k' ? -1 : key.downArrow || input === 'j' ? 1 : key.pageUp ? -10 : key.pageDown ? 10 : 0;
+    if (step) setView({ ...view, skillOffset: Math.min(last, Math.max(0, view.skillOffset + step)) });
   });
 
   return (
@@ -86,8 +97,11 @@ export function App({ load, build, interval, version, now = Date.now }: Props) {
       status={{ version, interval, refreshedAt, refreshing, error }}
       columns={columns}
       rows={rows}
+      view={view}
     />
   );
 }
+
+const next = <T,>(list: T[], current: T): T => list[(list.indexOf(current) + 1) % list.length]!;
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));

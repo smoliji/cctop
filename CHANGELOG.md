@@ -13,6 +13,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
   API list-price cost estimate per day.
 - Top skills (Skill tool calls and typed slash commands), top tools with MCP
   calls grouped by server, and the model mix by tokens.
+- Skills tab (`2`): every skill in the period with uses, tokens and cost spent
+  inside it (from `attributionSkill`), last use, model vs typed invocations and
+  the lifetime count; sortable with `s` and scrollable.
+- Layout adapts to the terminal: frame capped at 120 columns, fewer days and
+  panels on small terminals, models of one family in shades of one color.
 - Period switch (`p`: today / 7d / 30d), manual refresh (`r`) and auto refresh
   every `--interval` seconds.
 - `--print` renders one frame and exits, `--json` dumps the computed overview,

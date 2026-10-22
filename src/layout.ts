@@ -14,6 +14,9 @@ export interface Layout {
 
 export const MIN_COLUMNS = 60;
 export const MIN_ROWS = 15;
+/** Wider frames only push numbers away from their labels. */
+export const MAX_COLUMNS = 120;
+const MAX_METER = 48;
 const MAX_DAYS = 7;
 /** Rows sit indented under their section title. */
 export const INDENT = 2;
@@ -35,9 +38,9 @@ export function computeLayout(
   rows: number,
   meters: { lines: number; labelWidth: number },
 ): Layout {
-  const width = Math.max(0, columns - 2);
+  const width = Math.max(0, Math.min(columns, MAX_COLUMNS) - 2);
   const panels = panelsFor(columns);
-  const meterBar = Math.max(4, width - INDENT - meterChrome(meters.labelWidth));
+  const meterBar = Math.max(4, Math.min(MAX_METER, width - INDENT - meterChrome(meters.labelWidth)));
   const dayBar = Math.max(4, width - INDENT - DAY_CHROME);
   if (columns < MIN_COLUMNS || rows < MIN_ROWS) {
     return { tooSmall: true, width, days: 0, panels: [], panelRows: 0, meterBar, dayBar };

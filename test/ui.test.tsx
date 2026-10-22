@@ -4,7 +4,7 @@ import React from 'react';
 import { renderToString } from 'ink';
 import { render } from 'ink-testing-library';
 import { App, type Snapshot } from '../src/ui/App.js';
-import { Screen, type Status } from '../src/ui/Screen.js';
+import { DEFAULT_VIEW, Screen, type Status, type View } from '../src/ui/Screen.js';
 import type { Overview, Period } from '../src/types.js';
 import { DAY_CHROME, INDENT } from '../src/layout.js';
 
@@ -35,6 +35,10 @@ const overview: Overview = {
     { name: 'Slack', count: 1407, server: 'Slack' },
     { name: 'Read', count: 187 },
   ],
+  skills: [
+    { name: 'review-pr', calls: 5, typed: 2, turns: 40, tokens: 9e6, cost: 6, lastUsed: NOW - HOUR, allTime: 30 },
+    { name: 'distill', calls: 6, typed: 0, turns: 90, tokens: 20e6, cost: 11, lastUsed: NOW - 3 * HOUR, allTime: null },
+  ],
   models: [
     { name: 'opus-5-5', tokens: 300e6, share: 0.87, cost: 150 },
     { name: 'haiku-4-5', tokens: 44e6, share: 0.13, cost: 26 },
@@ -52,8 +56,8 @@ const overview: Overview = {
 const status: Status = { version: '0.1.0', interval: 60, refreshedAt: NOW, refreshing: false };
 
 const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
-const frame = (columns: number, rows: number, o: Overview | null = overview, s = status) =>
-  strip(renderToString(<Screen overview={o} status={s} columns={columns} rows={rows} />, { columns }));
+const frame = (columns: number, rows: number, o: Overview | null = overview, s = status, view?: View) =>
+  strip(renderToString(<Screen overview={o} status={s} columns={columns} rows={rows} view={view} />, { columns }));
 const lines = (f: string) => f.split('\n');
 
 test('renders every section at a roomy size', () => {
@@ -69,21 +73,21 @@ test('renders every section at a roomy size', () => {
   assert.match(f, /TOP SKILLS · 7d/);
   assert.match(f, /mcp Slack/);
   assert.match(f, /opus-5-5 .*87%/);
-  assert.match(f, /p period {2}r refresh {2}q quit/);
+  assert.match(f, /tab switch {2}p period {2}r refresh {2}q quit/);
   assert.match(f, /\* API list-price equivalent/);
 });
 
 test('a meter whose window already reset shows empty instead of the cached percent', () => {
   const usage = { ...overview.usage!, meters: [{ label: '5h', percent: 42, resetsAt: NOW - HOUR }] };
   const f = frame(120, 40, { ...overview, usage });
-  assert.match(f, /5h +░+ +0% +window reset/);
+  assert.match(f, /5h +─+ +0% +window reset/);
   assert.doesNotMatch(f, /42%/);
 });
 
 test('a model with a 0% share draws an empty bar', () => {
   const models = [...overview.models, { name: 'sonnet-5-5', tokens: 1, share: 0.001, cost: 0 }];
   const f = frame(120, 40, { ...overview, models });
-  assert.match(f, /sonnet-5-5 +0% ░{6}/);
+  assert.match(f, /sonnet-5-5 +0% ─{6}/);
 });
 
 test('the header ends with the refresh time', () => {
@@ -105,7 +109,7 @@ test('the frame never outgrows the terminal', () => {
 
 test('the busiest day gets the full bar and others scale to it', () => {
   const f = frame(100, 40);
-  const bar = (label: string) => lines(f).find((l) => l.includes(label))!.split('█').length - 1;
+  const bar = (label: string) => lines(f).find((l) => l.includes(label))!.split('▆').length - 1;
   assert.equal(bar('Tu 20'), 100 - 2 - INDENT - DAY_CHROME);
   assert.ok(bar('We 21') < bar('Tu 20'));
   assert.ok(bar('We 21') > 0);
@@ -227,4 +231,21 @@ test('q quits', async () => {
   stdin.write('p');
   await tick();
   assert.equal(builds, 1);
+});
+
+test('the skills tab lists every skill sorted by the chosen column', () => {
+  const byUses = lines(frame(120, 30, overview, status, { ...DEFAULT_VIEW, tab: 'skills' }));
+  assert.match(byUses.join('\n'), /SKILLS · 7d .* 2 skills · sorted by uses/);
+  assert.ok(byUses.findIndex((l) => l.includes('review-pr')) < byUses.findIndex((l) => l.includes('distill')));
+  assert.match(byUses.join('\n'), /review-pr +7 +9M +1h ago +\$6 +5 +2 +40 +30/);
+
+  const byTokens = lines(frame(120, 30, overview, status, { ...DEFAULT_VIEW, tab: 'skills', skillSort: 'tokens' }));
+  assert.ok(byTokens.findIndex((l) => l.includes('distill')) < byTokens.findIndex((l) => l.includes('review-pr')));
+});
+
+test('the skills tab drops columns on a narrow terminal', () => {
+  const f = frame(60, 20, overview, status, { ...DEFAULT_VIEW, tab: 'skills' });
+  assert.match(f, /USES/);
+  assert.doesNotMatch(f, /ALL TIME/);
+  for (const l of lines(f)) assert.ok([...l].length <= 60, l);
 });

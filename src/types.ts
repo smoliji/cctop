@@ -17,6 +17,8 @@ export interface ApiResponse {
   sidechain: boolean;
   /** Subagent that made the call; absent in the main session. */
   agentId?: string;
+  /** Skill active while the response was made (`attributionSkill`). */
+  skill?: string;
   usage: TokenUsage;
 }
 
@@ -91,6 +93,22 @@ export interface Ranked {
   server?: string;
 }
 
+/** One skill's use in the period, from every place a transcript records it. */
+export interface SkillRow {
+  name: string;
+  /** Times the model loaded it with the `Skill` tool. */
+  calls: number;
+  /** Times the user typed it as a slash command. */
+  typed: number;
+  /** API responses made while the skill was active. */
+  turns: number;
+  tokens: number;
+  cost: number | null;
+  lastUsed: number | null;
+  /** Lifetime count from `skillUsage`, which outlives transcript retention. */
+  allTime: number | null;
+}
+
 export interface ModelShare {
   name: string;
   tokens: number;
@@ -114,6 +132,7 @@ export interface Overview {
     subagents: number;
   };
   topSkills: Ranked[];
+  skills: SkillRow[];
   topTools: Ranked[];
   models: ModelShare[];
   usage: PlanUsage | null;

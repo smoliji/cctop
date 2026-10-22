@@ -52,8 +52,10 @@ function Meter({ meter, now, bar, label }: { meter: LimitMeter; now: number; bar
     <Text wrap="truncate-end">
       {fit(meter.label, label)}
       {'  '}
-      <Text color={meterColor(percent)}>{'█'.repeat(filled)}</Text>
-      <Text color="gray">{'░'.repeat(bar - filled)}</Text>
+      <Text color={meterColor(percent)}>{'━'.repeat(filled)}</Text>
+      <Text color="gray" dimColor>
+        {'─'.repeat(bar - filled)}
+      </Text>
       {`${Math.round(percent)}%`.padStart(5)}
       {'  '}
       <Text color="gray">{reset.padStart(14)}</Text>

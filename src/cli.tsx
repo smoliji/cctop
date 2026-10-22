@@ -9,7 +9,7 @@ import { buildOverview } from './overview.js';
 import { readClaudeState } from './sources/claudeJson.js';
 import { TranscriptStore } from './sources/transcripts.js';
 import { App, type Snapshot } from './ui/App.js';
-import { Screen } from './ui/Screen.js';
+import { DEFAULT_VIEW, Screen, TABS, type Tab } from './ui/Screen.js';
 
 const HELP = `cctop — a htop-like dashboard for your local Claude Code usage
 
@@ -20,14 +20,18 @@ Options:
   --interval <s>  seconds between refreshes (default 60)
   --dir <path>    Claude config dir (default $CLAUDE_CONFIG_DIR or ~/.claude)
   --print         render one frame to stdout and exit (COLUMNS, LINES set the size when piped)
+  --tab <name>    tab for --print: overview or skills (default overview)
   --json          print the overview as JSON and exit
   -h, --help      show this help
   -v, --version   show the version
 
 Keys:
-  p  cycle period (today, 7d, 30d)
-  r  refresh now
-  q  quit
+  1, 2, tab  switch between Overview and Skills
+  s          sort skills (uses, tokens, recent)
+  ↑↓         scroll skills
+  p          cycle period (today, 7d, 30d)
+  r          refresh now
+  q          quit
 
 cctop only reads local files: transcripts in <dir>/projects and the cached
 plan usage in <dir>/.claude.json, or ~/.claude.json when that does not exist.
@@ -73,6 +77,7 @@ function parse() {
         dir: { type: 'string' },
         print: { type: 'boolean', default: false },
         json: { type: 'boolean', default: false },
+        tab: { type: 'string', default: 'overview' },
         help: { type: 'boolean', short: 'h', default: false },
         version: { type: 'boolean', short: 'v', default: false },
       },
@@ -90,6 +95,9 @@ async function main() {
   const interval = Number(args.interval);
   if (!Number.isFinite(interval) || interval < 1) fail(`--interval must be a number of seconds ≥ 1`);
 
+  const tab = args.tab as Tab;
+  if (!TABS.includes(tab)) fail(`--tab must be one of ${TABS.join(', ')}`);
+
   const { transcripts, claudeJson } = paths(args.dir);
   const store = new TranscriptStore(transcripts);
   const load = async (): Promise<Snapshot> => {
@@ -106,14 +114,16 @@ async function main() {
     const columns = tty ? process.stdout.columns : size(process.env.COLUMNS, 100);
     const rows = tty ? process.stdout.rows : size(process.env.LINES, 40);
     const status = { version: version(), interval, refreshedAt: now, refreshing: false };
-    const frame = renderToString(<Screen overview={overview} status={status} columns={columns} rows={rows} />, {
+    const frame = renderToString(<Screen overview={overview} status={status} columns={columns} rows={rows} view={{ ...DEFAULT_VIEW, tab }} />, {
       columns,
     });
     return void process.stdout.write(`${frame}\n`);
   }
 
   // The alternate screen gives Ink a clean full-height canvas, so redraws and
-  // resizes never cascade copies of the frame into the scrollback.
+  // resizes never cascade copies of the frame into the scrollback. Ink keeps the
+  // cursor where the shell left it, so home it or the frame starts mid-screen.
+  process.stdout.write('\x1b[?1049h\x1b[H');
   const { waitUntilExit, unmount } = render(
     <App load={load} build={buildOverview} interval={interval} version={version()} />,
     { exitOnCtrlC: false, alternateScreen: true },

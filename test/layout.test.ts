@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeLayout } from '../src/layout.js';
+import { computeLayout, MAX_COLUMNS } from '../src/layout.js';
 
 const meters = { lines: 3, labelWidth: 5 };
 
@@ -41,9 +41,10 @@ test('panel rows are capped', () => {
   assert.equal(computeLayout(100, 80, meters).panelRows, 10);
 });
 
-test('bars stretch with the width', () => {
+test('bars stretch with the width up to the frame cap', () => {
   const narrow = computeLayout(80, 30, meters);
-  const wide = computeLayout(160, 30, meters);
-  assert.equal(wide.dayBar - narrow.dayBar, 80);
-  assert.equal(wide.meterBar - narrow.meterBar, 80);
+  const capped = computeLayout(MAX_COLUMNS, 30, meters);
+  assert.equal(capped.dayBar - narrow.dayBar, MAX_COLUMNS - 80);
+  assert.deepEqual(computeLayout(200, 30, meters), capped);
+  assert.equal(capped.meterBar, 48);
 });
