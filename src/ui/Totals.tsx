@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { Overview, Period } from '../types.js';
-import { formatCost, formatTokens } from '../format.js';
+import { formatCost, formatTokens, MUTED } from '../format.js';
 import { INDENT, TOTALS_GAP, TOTALS_LABEL, TOTALS_ROWS, TOTALS_VALUE } from '../layout.js';
 
 type Pair = [label: string, value: string];
@@ -33,7 +33,7 @@ const ready = (overview: Overview | null) => (overview && !overview.pending.peri
 function Title({ overview, period }: Props) {
   return (
     <Text bold>
-      TOTALS <Text color="gray">· {overview?.period ?? period}</Text>
+      TOTALS <Text color={MUTED}>· {overview?.period ?? period}</Text>
     </Text>
   );
 }
@@ -52,8 +52,8 @@ export function Totals({ overview, period }: Props) {
             {[pairs[row]!, pairs[row + TOTALS_ROWS]!].map(([label, value], i) => (
               <Text key={label}>
                 {i > 0 && ' '.repeat(TOTALS_GAP)}
-                <Text color="gray">{label.padEnd(TOTALS_LABEL)}</Text>
-                <Text color={data ? undefined : 'gray'}>{value.padStart(TOTALS_VALUE)}</Text>
+                <Text color={MUTED}>{label.padEnd(TOTALS_LABEL)}</Text>
+                <Text color={data ? undefined : MUTED}>{value.padStart(TOTALS_VALUE)}</Text>
               </Text>
             ))}
           </Text>
@@ -76,12 +76,12 @@ export function TotalsStrip({ overview, period, width }: Props & { width: number
           {shown.map(([label, value], i) => (
             <Text key={label}>
               {i > 0 && '  '}
-              <Text color="gray">{label}</Text> {value}
+              <Text color={MUTED}>{label}</Text> {value}
             </Text>
           ))}
         </Text>
       ) : (
-        <Text color="gray" wrap="truncate-start">
+        <Text color={MUTED} wrap="truncate-start">
           reading transcripts…
         </Text>
       )}

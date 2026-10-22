@@ -7,6 +7,8 @@ import { App, type Build, type Scan } from '../src/ui/App.js';
 import { DEFAULT_VIEW, Screen, type Status, type View } from '../src/ui/Screen.js';
 import type { ClaudeState, Overview, Period, TranscriptData } from '../src/types.js';
 import { DAY_CHROME, INDENT } from '../src/layout.js';
+import { MUTED } from '../src/format.js';
+import { axis } from '../src/ui/History.js';
 import { stripPairs } from '../src/ui/Totals.js';
 import { recency, skillTable, sortSkills, splitName } from '../src/ui/Skills.js';
 
@@ -234,11 +236,22 @@ test('fewer panels and days on a small terminal', () => {
 
 test('a short terminal sums and scales the history over the days it shows', () => {
   const days = overview.days.map((d) => (d.date === '2026-10-15' ? { ...d, tokens: 200e6, tokensByModel: { 'fable-5-1': 200e6 } } : d));
-  const f = frame(100, 17, { ...overview, days });
+  const f = frame(100, 18, { ...overview, days });
   assert.match(f, /TOKENS · LAST 6 DAYS +avg 51M {2}peak 118M {2}6d 307M {2}\$148\*/);
   assert.doesNotMatch(f, /Th 15|200M/);
   const row = lines(f).find((l) => l.includes('Tu 20'))!;
   assert.doesNotMatch(row, /─/, 'the peak of the shown days fills the bar');
+});
+
+test('the history axis numbers the bar scale from zero under the bars', () => {
+  assert.equal(axis(0, 60), '');
+  const scale = axis(148e6, 60);
+  assert.match(scale, /^0 +50M +100M$/);
+  assert.equal(scale.indexOf('50M'), Math.round((50e6 / 148e6) * 60 - 1.5));
+  assert.ok(axis(148e6, 1000).length <= 1000);
+  const f = lines(frame(120, 34));
+  const legend = f.findIndex((l) => l.includes('■ opus-5-5'));
+  assert.match(f[legend - 1]!, /^ {10}0 {2,}\S+/, 'the axis sits right above the legend, aligned with the bars');
 });
 
 test('the models panel bar takes the width of the panel', () => {
@@ -714,11 +727,11 @@ test('skillTable shares the width between name, bar and columns', () => {
   }
 });
 
-test('recency colors today cyan and anything older than a week gray', () => {
+test('recency colors today cyan and anything older than a week muted', () => {
   assert.equal(recency(NOW - HOUR, NOW), 'cyan');
   assert.equal(recency(NOW - 15 * HOUR, NOW), undefined);
-  assert.equal(recency(NOW - 8 * 24 * HOUR, NOW), 'gray');
-  assert.equal(recency(null, NOW), 'gray');
+  assert.equal(recency(NOW - 8 * 24 * HOUR, NOW), MUTED);
+  assert.equal(recency(null, NOW), MUTED);
 });
 
 test('splitName cuts the plugin before the skill', () => {

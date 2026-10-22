@@ -25,7 +25,7 @@ const SIZES = [
 
 /** Rows the frame takes: the same sum Screen renders. */
 const height = (l: Layout, lines: number) =>
-  8 +
+  9 +
   (l.wide ? Math.max(lines, TOTALS_ROWS) : lines) +
   l.days +
   (l.panels.length ? 2 + l.panelRows : 0) +
@@ -59,31 +59,31 @@ test('history keeps one day and drops the panels when nothing fits', () => {
 });
 
 test('history takes rows first, up to 7 days', () => {
-  assert.equal(computeLayout(80, 15, meters).days, 4);
-  assert.equal(computeLayout(80, 19, meters).days, 7);
+  assert.equal(computeLayout(80, 15, meters).days, 3);
+  assert.equal(computeLayout(80, 20, meters).days, 7);
   assert.equal(computeLayout(80, 80, meters).days, 7);
 });
 
 test('panels need at least 3 item rows, else they hide', () => {
-  const tight = computeLayout(80, 22, meters);
+  const tight = computeLayout(80, 23, meters);
   assert.deepEqual(tight.panels, []);
   assert.equal(tight.panelRows, 0);
-  const fits = computeLayout(80, 23, meters);
+  const fits = computeLayout(80, 24, meters);
   assert.equal(fits.panelRows, 3);
   assert.deepEqual(fits.panels, ['skills', 'tools']);
 });
 
 test('panel rows take every row left', () => {
-  assert.equal(computeLayout(100, 80, meters).panelRows, 80 - 8 - 3 - 7 - 2);
+  assert.equal(computeLayout(100, 80, meters).panelRows, 80 - 9 - 3 - 7 - 2);
 });
 
 test('the narrow totals strip waits for the panels minimum', () => {
   const small = computeLayout(80, 24, meters);
   assert.equal(small.strip, false);
-  assert.equal(small.panelRows, 4);
+  assert.equal(small.panelRows, 3);
   const tall = computeLayout(80, 30, meters);
   assert.equal(tall.strip, true);
-  assert.equal(tall.panelRows, 8);
+  assert.equal(tall.panelRows, 7);
   for (const [columns, rows] of SIZES) {
     if (columns >= 100) assert.equal(computeLayout(columns, rows, meters).strip, false);
   }

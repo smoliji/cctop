@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { ClaudeState, Overview, Period, SkillRow } from '../types.js';
-import { BLOCK, barCells, fit, formatCost, formatDuration, formatTokens, splitCells } from '../format.js';
+import { barCells, BLOCK, fit, formatCost, formatDuration, formatTokens, MUTED, splitCells } from '../format.js';
 import { INDENT } from '../layout.js';
 import { lifetimeSkills, localDate } from '../overview.js';
 import { Legend, modelOrder } from './History.js';
@@ -74,9 +74,9 @@ export function skillRows(overview: Overview | null, state: ClaudeState): SkillR
 
 /** Used today reads cyan like today's history row; older than a week turns gray, since dim is not available. */
 export function recency(lastUsed: number | null, now: number): string | undefined {
-  if (lastUsed === null) return 'gray';
+  if (lastUsed === null) return MUTED;
   if (localDate(lastUsed) === localDate(now)) return 'cyan';
-  return now - lastUsed > 7 * DAY ? 'gray' : undefined;
+  return now - lastUsed > 7 * DAY ? MUTED : undefined;
 }
 
 export interface Table {
@@ -159,15 +159,15 @@ export function Skills({ overview, state, period, palette, sort, offset, rows, w
     <Box flexDirection="column">
       <Box justifyContent="space-between" gap={2}>
         <Text bold>
-          SKILLS <Text color="gray">· {overview?.period ?? period}</Text>
+          SKILLS <Text color={MUTED}>· {overview?.period ?? period}</Text>
         </Text>
-        <Text color="gray" wrap="truncate-start">
+        <Text color={MUTED} wrap="truncate-start">
           {loaded ? summary(all, loaded) : `${all.length} skills · lifetime counts`}
         </Text>
       </Box>
       <Header columns={columns} name={name} bar={bar} sort={sorted} width={width} />
       {all.length === 0 && (
-        <Text color="gray">
+        <Text color={MUTED}>
           {spaces(INDENT)}
           {loaded ? 'no skills used in this period' : 'reading transcripts…'}
         </Text>
@@ -178,7 +178,7 @@ export function Skills({ overview, state, period, palette, sort, offset, rows, w
           <Name name={row.name} width={name} />
           {columns.map((c) => {
             const value = c.value(row, now);
-            const color = value === '·' ? 'gray' : c.color ? c.color(row, now) : c.tone === 'secondary' ? 'gray' : undefined;
+            const color = value === '·' ? MUTED : c.color ? c.color(row, now) : c.tone === 'secondary' ? MUTED : undefined;
             return (
               <Text key={c.title} color={color} bold={c.sort === sorted && value !== '·'}>
                 {spaces(GAP)}
@@ -195,7 +195,7 @@ export function Skills({ overview, state, period, palette, sort, offset, rows, w
         </Text>
       ))}
       <Box justifyContent="space-between" gap={2} paddingLeft={INDENT}>
-        <Text color="gray" wrap="truncate-end">
+        <Text color={MUTED} wrap="truncate-end">
           {[start > 0 && `↑ ${start} more`, more > 0 && `↓ ${more} more`].filter(Boolean).join('   ') || ' '}
         </Text>
         {bar > 0 && models.length > 0 && <Legend models={models} palette={palette} truncate="truncate-start" />}
@@ -236,7 +236,7 @@ function Name({ name, width }: { name: string; width: number }) {
   const { plugin, skill } = splitName(name, width);
   return (
     <Text>
-      <Text color="gray">{plugin}</Text>
+      <Text color={MUTED}>{plugin}</Text>
       {skill}
     </Text>
   );
@@ -265,7 +265,7 @@ function Bar({ row, models, peak, width, palette }: BarProps) {
           </Text>
         ) : null,
       )}
-      <Text color="gray">{'─'.repeat(width - length)}</Text>
+      <Text color={MUTED}>{'─'.repeat(width - length)}</Text>
     </Text>
   );
 }

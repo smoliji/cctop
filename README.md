@@ -26,6 +26,7 @@ keeps on your disk, so watching it costs nothing.
    Su 18  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆───────────────────────────────────────────────────────     39M  $ 22
    Sa 17  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆─────────────────────────────     92M  $ 50
    Fr 16  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆    148M  $ 48
+          0           25M          50M           75M         100M          125M
    ■ opus-5-5   ■ haiku-4-5   ■ fable-5-1   ■ sonnet-5-5
 
  TOP SKILLS · 7d                  TOOLS · 7d                       MODELS · 7d
@@ -38,7 +39,6 @@ keeps on your disk, so watching it costs nothing.
    team-report                3     SubagentHandback  169
    monthly-report             3     Write             141
    ops:triage-alerts          3     StructuredOutput   72
-   superpowers:writing-skills 2     Skill              54
 
  tab switch  p period  r refresh  q quit                                * API list-price equivalent
 ```

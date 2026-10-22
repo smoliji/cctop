@@ -66,6 +66,12 @@ function parseDate(date: string): Date {
   return new Date(y!, m! - 1, d!);
 }
 
+/**
+ * Secondary text and empty tracks. A fixed mid gray instead of ANSI gray, which
+ * some themes draw darker than the default foreground, so it would stand out instead of recede.
+ */
+export const MUTED = '#808080';
+
 // One hue per model family; the newest version gets the vivid shade, older ones a greyed one.
 // Both keep the same luminance, picked for at least 3:1 contrast on light and dark backgrounds.
 const FAMILIES: [string, string[]][] = [
@@ -84,7 +90,7 @@ export function modelPalette(models: string[]): Map<string, string> {
       .sort(newestFirst)
       .forEach((m, i) => palette.set(m, shades[Math.min(i, shades.length - 1)]!));
   }
-  for (const m of unique) if (!palette.has(m)) palette.set(m, 'gray');
+  for (const m of unique) if (!palette.has(m)) palette.set(m, MUTED);
   return palette;
 }
 

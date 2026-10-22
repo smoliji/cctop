@@ -66,8 +66,8 @@ export function computeLayout(
   }
 
   const headRows = wide ? Math.max(meters.lines, TOTALS_ROWS) : meters.lines;
-  // header, limits title, tokens title, legend, footer + 3 blank separators
-  const free = rows - 8 - headRows;
+  // header, limits title, tokens title, axis, legend, footer + 3 blank separators
+  const free = rows - 9 - headRows;
   const days = Math.min(MAX_DAYS, Math.max(1, free));
   let rest = free - days;
   // blank separator + panel title

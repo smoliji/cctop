@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { DayRow, Overview } from '../types.js';
-import { BLOCK, barCells, formatCost, formatDay, formatTokens, isWeekend, splitCells } from '../format.js';
+import { barCells, BLOCK, formatCost, formatDay, formatTokens, isWeekend, MUTED, splitCells } from '../format.js';
 import { INDENT } from '../layout.js';
 import { recentDates } from '../overview.js';
 
@@ -25,7 +25,7 @@ export function History({ overview, now, days, bar, palette }: Props) {
     <Box flexDirection="column">
       <Box justifyContent="space-between" gap={2}>
         <Text bold>{titleOf(rows.length)}</Text>
-        <Text color="gray" wrap="truncate-start">
+        <Text color={MUTED} wrap="truncate-start">
           avg {formatTokens(avg)}  peak {formatTokens(peak)}  {rows.length}d {formatTokens(tokens)}
           {cost === null ? '' : `  ${formatCost(cost)}*`}
         </Text>
@@ -34,14 +34,43 @@ export function History({ overview, now, days, bar, palette }: Props) {
         {rows.map((day, i) => (
           <Day key={day.date} day={day} today={i === 0} models={models} peak={peak} bar={bar} palette={palette} />
         ))}
+        <Text color={MUTED} wrap="truncate-end">
+          {' '.repeat(LABEL)}
+          {axis(peak, bar)}
+        </Text>
         {models.length === 0 ? (
-          <Text color="gray">no tokens in the last days</Text>
+          <Text color={MUTED}>no tokens in the last days</Text>
         ) : (
           <Legend models={models} palette={palette} />
         )}
       </Box>
     </Box>
   );
+}
+
+/** Day label and the gap before the bar. */
+const LABEL = 7;
+/** Columns per axis label, roughly; sets how many ticks fit. */
+const TICK_SPACING = 12;
+
+/**
+ * Token values under the bars at round steps (1, 2, 2.5 or 5 × 10^n), each label
+ * centered on the cell its value reaches; a label that would touch the previous one is skipped.
+ */
+export function axis(peak: number, bar: number): string {
+  if (peak <= 0) return '';
+  const raw = peak / Math.max(1, Math.floor(bar / TICK_SPACING));
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= raw)!;
+  let line = '';
+  for (let i = 0; i * step <= peak; i++) {
+    const label = formatTokens(i * step);
+    const at = ((i * step) / peak) * bar;
+    const start = Math.max(0, Math.min(Math.round(at - label.length / 2), bar - label.length));
+    if (i > 0 && start < line.length + 2) continue;
+    line = line.padEnd(start) + label;
+  }
+  return line;
 }
 
 /** Cost only when every day with tokens has one, as a partial sum would pass for the whole. */
@@ -69,10 +98,11 @@ function Skeleton({ now, days, bar }: { now: number; days: number; bar: number }
             <Text key={date} wrap="truncate-end">
               <DayLabel date={date} today={i === 0} />
               {'  '}
-              <Text color="gray">{'─'.repeat(bar)}</Text>
+              <Text color={MUTED}>{'─'.repeat(bar)}</Text>
             </Text>
           ))}
-        {/* Holds the legend's row. */}
+        {/* Hold the axis and legend rows. */}
+        <Text> </Text>
         <Text> </Text>
       </Box>
     </Box>
@@ -81,7 +111,7 @@ function Skeleton({ now, days, bar }: { now: number; days: number; bar: number }
 
 function DayLabel({ date, today }: { date: string; today: boolean }) {
   return (
-    <Text color={today ? 'cyan' : isWeekend(date) ? 'gray' : undefined} bold={today}>
+    <Text color={today ? 'cyan' : isWeekend(date) ? MUTED : undefined} bold={today}>
       {formatDay(date)}
     </Text>
   );
@@ -121,7 +151,7 @@ function Day({ day, today, models, peak, bar, palette }: DayProps) {
       <DayLabel date={day.date} today={today} />
       {'  '}
       {day.tokens === 0 ? (
-        <Text color="gray">{'─'.repeat(bar)}</Text>
+        <Text color={MUTED}>{'─'.repeat(bar)}</Text>
       ) : (
         <>
           {models.map((m, i) =>
@@ -131,13 +161,13 @@ function Day({ day, today, models, peak, bar, palette }: DayProps) {
               </Text>
             ) : null,
           )}
-          <Text color="gray">{'─'.repeat(bar - length)}</Text>
+          <Text color={MUTED}>{'─'.repeat(bar - length)}</Text>
         </>
       )}
       {'  '}
       {(day.tokens ? formatTokens(day.tokens) : '').padStart(6)}
       {'  '}
-      <Text color="gray">{formatCost(day.tokens ? day.cost : null, 4)}</Text>
+      <Text color={MUTED}>{formatCost(day.tokens ? day.cost : null, 4)}</Text>
     </Text>
   );
 }
@@ -158,7 +188,7 @@ export function Legend({
         <Text key={m}>
           {i > 0 && '   '}
           <Text color={palette.get(m)}>■</Text>
-          <Text color="gray"> {m}</Text>
+          <Text color={MUTED}> {m}</Text>
         </Text>
       ))}
     </Text>

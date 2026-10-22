@@ -3,7 +3,7 @@ import { Box, Text } from 'ink';
 import type { ClaudeState, Overview, Period } from '../types.js';
 import type { Progress } from '../sources/transcripts.js';
 import { computeLayout, HEAD_GAP, MIN_COLUMNS, MIN_ROWS, TOTALS_WIDTH } from '../layout.js';
-import { formatClock, modelPalette } from '../format.js';
+import { formatClock, modelPalette, MUTED } from '../format.js';
 import { History } from './History.js';
 import { labelWidth, limitLines, Limits } from './Limits.js';
 import { Panels } from './Panels.js';
@@ -132,18 +132,18 @@ function Header({ status, tab, width }: { status: Status; tab: Tab; width: numbe
   return (
     <Box justifyContent="space-between" gap={2}>
       <Text wrap="truncate-end">
-        <Text bold>cctop</Text> <Text color="gray">{status.version}</Text>
+        <Text bold>cctop</Text> <Text color={MUTED}>{status.version}</Text>
         {TABS.map((t, i) => (
           <Text key={t}>
             {'   '}
-            <Text color="gray">{i + 1}</Text>{' '}
-            <Text bold={t === tab} color={t === tab ? 'cyan' : 'gray'}>
+            <Text color={MUTED}>{i + 1}</Text>{' '}
+            <Text bold={t === tab} color={t === tab ? 'cyan' : MUTED}>
               {TAB_TITLES[t]}
             </Text>
           </Text>
         ))}
       </Text>
-      <Text color="gray" wrap="truncate-start">
+      <Text color={MUTED} wrap="truncate-start">
         {width >= INTERVAL_WIDTH && `refresh ${status.interval}s · `}
         {progress && progress.total > 0 ? (
           <Text color="yellow">
@@ -174,7 +174,7 @@ function Footer({ error, tab, width }: { error?: string; tab: Tab; width: number
   return (
     <Box justifyContent="space-between" gap={2}>
       <Box flexShrink={0}>
-        <Text color="gray">
+        <Text color={MUTED}>
           {keys.map(([key, label], i) => (
             <Text key={key}>
               {i > 0 && '  '}
@@ -188,7 +188,7 @@ function Footer({ error, tab, width }: { error?: string; tab: Tab; width: number
           {error}
         </Text>
       ) : (
-        <Text color="gray" wrap="truncate-end">
+        <Text color={MUTED} wrap="truncate-end">
           {note}
         </Text>
       )}

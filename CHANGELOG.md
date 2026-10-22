@@ -9,8 +9,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 - Overview screen: plan limits (5h, weekly and per-model weekly) with time to
   reset, as last cached by Claude Code in `~/.claude.json`, plus how old that
   cache is.
-- Tokens per day for the last 7 days with average, peak and weekly total, and an
-  API list-price cost estimate per day.
+- Tokens per day for the last 7 days with average, peak and weekly total, an
+  API list-price cost estimate per day and a token scale under the bars.
 - Top skills (Skill tool calls and typed slash commands), top tools with MCP
   calls grouped by server, and the model mix by tokens.
 - Skills tab (`2`): every skill in the period with uses, tokens and cost spent

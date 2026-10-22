@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { LimitMeter, PlanUsage } from '../types.js';
-import { BLOCK, fit, formatDuration, meterColor } from '../format.js';
+import { BLOCK, fit, formatDuration, meterColor, MUTED } from '../format.js';
 import { INDENT } from '../layout.js';
 
 const STALE_MS = 15 * 60_000;
@@ -27,12 +27,12 @@ export function Limits({ usage, now, bar }: Props) {
       <Box justifyContent="space-between">
         <Text bold>LIMITS</Text>
         {usage && (
-          <Text color={age > STALE_MS ? 'yellow' : 'gray'}>cache {formatDuration(age)} old</Text>
+          <Text color={age > STALE_MS ? 'yellow' : MUTED}>cache {formatDuration(age)} old</Text>
         )}
       </Box>
       <Box flexDirection="column" paddingLeft={INDENT}>
-        {!usage && <Text color="gray">no plan usage cached yet</Text>}
-        {usage?.meters.length === 0 && <Text color="gray">no limits reported</Text>}
+        {!usage && <Text color={MUTED}>no plan usage cached yet</Text>}
+        {usage?.meters.length === 0 && <Text color={MUTED}>no limits reported</Text>}
         {usage?.meters.map((m) => (
           <Meter key={m.label} meter={m} now={now} bar={bar} label={labelWidth(usage)} />
         ))}
@@ -54,12 +54,12 @@ function Meter({ meter, now, bar, label }: { meter: LimitMeter; now: number; bar
       {fit(meter.label, label)}
       {'  '}
       <Text color={color}>{BLOCK.repeat(filled)}</Text>
-      <Text color="gray">{'─'.repeat(bar - filled)}</Text>
+      <Text color={MUTED}>{'─'.repeat(bar - filled)}</Text>
       <Text color={color} bold>
         {`${Math.round(percent)}%`.padStart(5)}
       </Text>
       {'  '}
-      <Text color="gray">{reset.padStart(14)}</Text>
+      <Text color={MUTED}>{reset.padStart(14)}</Text>
     </Text>
   );
 }

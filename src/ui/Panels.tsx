@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { Overview, Period, Ranked } from '../types.js';
 import { INDENT, PANEL_GAP, type Panel } from '../layout.js';
-import { BLOCK, fit, formatTokens } from '../format.js';
+import { BLOCK, fit, formatTokens, MUTED } from '../format.js';
 
 const MIN_SHARE = 6;
 
@@ -32,13 +32,13 @@ export function Panels({ overview, period, panels, widths, rows, palette }: Prop
       {panels.map((panel, i) => (
         <Box key={panel} flexDirection="column" width={widths[i]} flexShrink={0}>
           <Text bold wrap="truncate-end">
-            {TITLES[panel]} <Text color="gray">· {overview?.period ?? period}</Text>
+            {TITLES[panel]} <Text color={MUTED}>· {overview?.period ?? period}</Text>
           </Text>
           <Box flexDirection="column" paddingLeft={INDENT}>
             {ready ? (
               <Items items={items(panel, ready, palette).slice(0, rows)} width={widths[i]! - INDENT} />
             ) : (
-              <Text color="gray">…</Text>
+              <Text color={MUTED}>…</Text>
             )}
           </Box>
         </Box>
@@ -90,7 +90,7 @@ function items(panel: Panel, overview: Overview, palette: Map<string, string>): 
  * their names; a share bar after the value takes the rest of the panel.
  */
 function Items({ items, width }: { items: Item[]; width: number }) {
-  if (items.length === 0) return <Text color="gray">none</Text>;
+  if (items.length === 0) return <Text color={MUTED}>none</Text>;
   const value = Math.max(...items.map((i) => i.value.length));
   const shares = items.some((i) => i.share !== undefined);
   const longest = Math.max(...items.map((i) => (i.prefix?.length ?? 0) + i.name.length));
@@ -107,7 +107,7 @@ function Items({ items, width }: { items: Item[]; width: number }) {
           <>
             {' '}
             <Text color={item.color}>{BLOCK.repeat(filled)}</Text>
-            <Text color="gray">{'─'.repeat(bar - filled)}</Text>
+            <Text color={MUTED}>{'─'.repeat(bar - filled)}</Text>
           </>
         )}
       </Text>

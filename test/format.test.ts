@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatCost, formatDuration, formatTokens, modelPalette, splitCells } from '../src/format.js';
+import { formatCost, formatDuration, formatTokens, modelPalette, MUTED, splitCells } from '../src/format.js';
 
 test('formatTokens rounds within and across unit boundaries', () => {
   assert.equal(formatTokens(0), '0');
@@ -46,5 +46,5 @@ test('modelPalette gives each family one hue, strongest for the newest version',
   assert.notEqual(p.get('opus-5-5'), p.get('opus-5'));
   assert.equal(modelPalette(['opus-5-5']).get('opus-5-5'), p.get('opus-5-5'));
   assert.notEqual(p.get('fable-5-1'), p.get('opus-5-5'));
-  assert.equal(p.get('mystery-1'), 'gray');
+  assert.equal(p.get('mystery-1'), MUTED);
 });
