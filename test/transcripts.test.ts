@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { appendFileSync, chmodSync, cpSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseFile, parseLine, TranscriptStore } from '../src/sources/transcripts.js';
+import { parseFile, parseLine, TranscriptStore, type Progress } from '../src/sources/transcripts.js';
+import type { TranscriptData } from '../src/types.js';
 
 const fixtures = join(import.meta.dirname, 'fixtures', 'transcripts');
 
@@ -143,7 +144,7 @@ test('TranscriptStore picks up new, changed and deleted files', async (t) => {
 
 test('TranscriptStore treats a missing root as empty', async () => {
   const data = await new TranscriptStore(join(tmpdir(), 'cctop-missing-root')).refresh();
-  assert.deepEqual(data, { responses: [], toolCalls: [], slashCommands: [], files: 0 });
+  assert.deepEqual(data, { responses: [], toolCalls: [], slashCommands: [], files: 0, knownAfter: -Infinity });
 });
 
 test('parseFile keeps the final line of a streamed response', async (t) => {
@@ -182,4 +183,97 @@ test('TranscriptStore keeps a file whose read failed and retries it', { skip: pr
   const fixed = await store.refresh();
   assert.equal(fixed.responses.length, 3);
   assert.equal(fixed.files, 3);
+});
+
+const DAY = 86_400_000;
+
+/** One file holding one response, last modified `age` ms ago. */
+function transcript(root: string, name: string, age: number, now = Date.now()): string {
+  const file = join(root, `${name}.jsonl`);
+  writeFileSync(file, assistant({ requestId: name, timestamp: new Date(now - age).toISOString() }, { id: name }) + '\n');
+  const at = new Date(now - age);
+  utimesSync(file, at, at);
+  return file;
+}
+
+const keys = (data: { responses: { key: string }[] }) => data.responses.map((r) => r.key).sort();
+
+test('refresh skips files modified over a day before since', async (t) => {
+  const root = tmp(t);
+  const now = Date.now();
+  transcript(root, 'old', 40 * DAY, now);
+  const edge = transcript(root, 'edge', 30.5 * DAY, now);
+  const store = new TranscriptStore(root);
+  const since = now - 30 * DAY;
+  const first = await store.refresh({ since });
+  assert.deepEqual(keys(first), ['edge:edge']);
+  assert.equal(first.files, 1);
+
+  const aged = new Date(now - 40 * DAY);
+  utimesSync(edge, aged, aged);
+  const second = await store.refresh({ since });
+  assert.deepEqual(keys(second), []);
+  assert.equal(second.files, 0);
+});
+
+test('the first scan publishes the newest files once', async (t) => {
+  const root = tmp(t);
+  const now = Date.now();
+  transcript(root, 'a', 0, now);
+  const b = transcript(root, 'b', 2 * DAY, now);
+  const c = transcript(root, 'c', 3 * DAY, now);
+  const partials: { keys: string[]; knownAfter: number }[] = [];
+  const onPartial = (d: TranscriptData) =>
+    partials.push({ keys: keys(d), knownAfter: d.knownAfter });
+  const store = new TranscriptStore(root);
+
+  const data = await store.refresh({ partialAt: now - DAY, onPartial });
+  assert.deepEqual(partials, [{ keys: ['a:a'], knownAfter: statSync(b).mtimeMs }]);
+  assert.deepEqual(keys(data), ['a:a', 'b:b', 'c:c']);
+  assert.equal(data.knownAfter, -Infinity);
+
+  appendFileSync(c, assistant({ requestId: 'c2' }, { id: 'c2' }) + '\n');
+  const later = new Date(now - 2.5 * DAY);
+  utimesSync(c, later, later);
+  assert.equal((await store.refresh({ partialAt: now - DAY, onPartial })).responses.length, 4);
+  assert.equal(partials.length, 1);
+});
+
+test('no partial when nothing older needs reading', async (t) => {
+  const root = tmp(t);
+  transcript(root, 'a', 0);
+  transcript(root, 'b', 1000);
+  let partials = 0;
+  await new TranscriptStore(root).refresh({ partialAt: Date.now() - DAY, onPartial: () => partials++ });
+  assert.equal(partials, 0);
+});
+
+test('progress counts the files to read', async (t) => {
+  const root = tmp(t);
+  for (const name of ['a', 'b', 'c']) transcript(root, name, 1000);
+  const store = new TranscriptStore(root);
+  const seen: Progress[] = [];
+  await store.refresh({ onProgress: (p) => seen.push(p) });
+  assert.deepEqual(seen[0], { done: 0, total: 3 });
+  assert.deepEqual(seen.at(-1), { done: 3, total: 3 });
+  for (let i = 1; i < seen.length; i++) assert.ok(seen[i]!.done >= seen[i - 1]!.done);
+
+  seen.length = 0;
+  await store.refresh({ onProgress: (p) => seen.push(p) });
+  assert.deepEqual(seen, []);
+});
+
+test('concurrent refreshes share one scan', async (t) => {
+  const root = tmp(t);
+  for (const name of ['a', 'b']) transcript(root, name, 1000);
+  const store = new TranscriptStore(root);
+  const totals: number[] = [];
+  const onProgress = (p: Progress) => {
+    if (p.done === 0) totals.push(p.total);
+  };
+  const a = store.refresh({ onProgress });
+  const b = store.refresh({ onProgress });
+  assert.equal(a, b);
+  assert.equal(await a, await b);
+  assert.deepEqual(totals, [2]);
 });

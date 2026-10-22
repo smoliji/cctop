@@ -25,7 +25,7 @@
     "prices": "tsx scripts/update-prices.ts",
     "start": "node dist/cli.js",
     "test": "tsx --test test/*.test.ts test/*.test.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
   },
   "engines": {
     "node": ">=22"

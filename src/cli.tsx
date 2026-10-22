@@ -5,10 +5,11 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { render, renderToString } from 'ink';
-import { buildOverview } from './overview.js';
+import { buildOverview, historyStart, horizon } from './overview.js';
+import { cachePath } from './sources/cache.js';
 import { readClaudeState } from './sources/claudeJson.js';
-import { TranscriptStore } from './sources/transcripts.js';
-import { App, type Snapshot } from './ui/App.js';
+import { TranscriptStore, type ScanOptions } from './sources/transcripts.js';
+import { App } from './ui/App.js';
 import { DEFAULT_VIEW, Screen, TABS, type Tab } from './ui/Screen.js';
 
 const HELP = `cctop — a htop-like dashboard for your local Claude Code usage
@@ -22,6 +23,7 @@ Options:
   --print         render one frame to stdout and exit (COLUMNS, LINES set the size when piped)
   --tab <name>    tab for --print: overview or skills (default overview)
   --json          print the overview as JSON and exit
+  --no-cache      do not read or write the transcript cache
   -h, --help      show this help
   -v, --version   show the version
 
@@ -35,7 +37,8 @@ Keys:
 
 cctop only reads local files: transcripts in <dir>/projects and the cached
 plan usage in <dir>/.claude.json, or ~/.claude.json when that does not exist.
-It never calls the API.
+It never calls the API. To start fast it keeps parsed token counts (no message
+text) in ~/.cache/cctop.
 `;
 
 function fail(msg: string): never {
@@ -78,6 +81,8 @@ function parse() {
         print: { type: 'boolean', default: false },
         json: { type: 'boolean', default: false },
         tab: { type: 'string', default: 'overview' },
+        // A plain flag: parseArgs only negates `--cache` from Node 22.4, and engines allow 22.0.
+        'no-cache': { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
         version: { type: 'boolean', short: 'v', default: false },
       },
@@ -99,38 +104,57 @@ async function main() {
   if (!TABS.includes(tab)) fail(`--tab must be one of ${TABS.join(', ')}`);
 
   const { transcripts, claudeJson } = paths(args.dir);
-  const store = new TranscriptStore(transcripts);
-  const load = async (): Promise<Snapshot> => {
-    const [data, state] = await Promise.all([store.refresh(), readClaudeState(claudeJson)]);
-    return { data, state };
+  const store = new TranscriptStore(transcripts, args['no-cache'] ? {} : { cache: cachePath(transcripts) });
+  const readState = () => readClaudeState(claudeJson);
+  const scan = (hooks: Pick<ScanOptions, 'onProgress' | 'onPartial'> = {}) => {
+    const now = Date.now();
+    return store.refresh({ since: horizon(now), partialAt: historyStart(now), ...hooks });
   };
 
   const tty = process.stdout.isTTY;
   if (args.json || args.print || !tty) {
-    const { data, state } = await load();
+    const [data, state] = await Promise.all([scan(), readState()]);
     const now = Date.now();
     const overview = buildOverview(data, state, '7d', now);
-    if (args.json) return void process.stdout.write(`${JSON.stringify(overview, null, 2)}\n`);
-    const columns = tty ? process.stdout.columns : size(process.env.COLUMNS, 100);
-    const rows = tty ? process.stdout.rows : size(process.env.LINES, 40);
-    const status = { version: version(), interval, refreshedAt: now, refreshing: false };
-    const frame = renderToString(<Screen overview={overview} status={status} columns={columns} rows={rows} view={{ ...DEFAULT_VIEW, tab }} />, {
-      columns,
-    });
-    return void process.stdout.write(`${frame}\n`);
+    if (args.json) {
+      process.stdout.write(`${JSON.stringify(overview, null, 2)}\n`);
+    } else {
+      const columns = tty ? process.stdout.columns : size(process.env.COLUMNS, 100);
+      // On a terminal the shell prompt takes the row after the frame.
+      const rows = tty ? process.stdout.rows - 1 : size(process.env.LINES, 40);
+      const status = { version: version(), interval, refreshedAt: now, refreshing: false, progress: null };
+      const frame = renderToString(
+        <Screen
+          overview={overview}
+          state={state}
+          now={now}
+          status={status}
+          columns={columns}
+          rows={rows}
+          view={{ ...DEFAULT_VIEW, tab }}
+        />,
+        { columns },
+      );
+      process.stdout.write(`${frame}\n`);
+    }
+    return store.flush();
   }
+
+  const initial = await readState();
 
   // The alternate screen gives Ink a clean full-height canvas, so redraws and
   // resizes never cascade copies of the frame into the scrollback. Ink keeps the
   // cursor where the shell left it, so home it or the frame starts mid-screen.
   process.stdout.write('\x1b[?1049h\x1b[H');
   const { waitUntilExit, unmount } = render(
-    <App load={load} build={buildOverview} interval={interval} version={version()} />,
+    <App initial={initial} readState={readState} scan={scan} build={buildOverview} interval={interval} version={version()} />,
     { exitOnCtrlC: false, alternateScreen: true },
   );
   process.on('SIGTERM', () => unmount());
   process.on('SIGHUP', () => unmount());
   await waitUntilExit();
+  // Keep what this session parsed, even mid-scan, or the next start reads those transcripts again.
+  await store.close();
   process.exit(0);
 }
 

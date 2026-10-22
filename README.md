@@ -11,40 +11,43 @@ keeps on your disk, so watching it costs nothing.
 </div>
 
 ```
- cctop 0.1.0   1 Overview   2 Skills                                         refresh 60s · 11:05:16
+ cctop 0.1.0   1 Overview   2 Skills                                         refresh 60s · 12:58:56
 
- LIMITS                                                                                cache 8m old
-   5h     ▆▆▆▆────────────────────────────────────────────   9%    reset 2h 54m
-   Week   ▆▆▆▆▆▆▆▆────────────────────────────────────────  17%    reset 2d 20h
-   Fable  ▆───────────────────────────────────────────────   3%    reset 2d 20h
+ LIMITS                                      cache 19m old   TOTALS · 7d
+   5h     ▆▆▆▆▆▆▆────────────────────  25%     reset 1h 1m     tokens      658M    sessions      47
+   Week   ▆▆▆▆▆──────────────────────  20%    reset 2d 19h     cost*       $327    responses   6.7k
+   Fable  ▆──────────────────────────   3%    reset 2d 19h     cache hit    96%    subagents    333
 
- TOKENS · LAST 7 DAYS                                            avg 87M  peak 148M  7d 610M  $302*
-   Th 22  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                                                            40M  $ 21
-   We 21  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                                    86M  $ 48
-   Tu 20  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                                    87M  $ 52
-   Mo 19  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                   118M  $ 60
-   Su 18  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                                                            39M  $ 22
-   Sa 17  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆                                  92M  $ 50
+ TOKENS · LAST 7 DAYS                                            avg 94M  peak 148M  7d 658M  $327*
+   Th 22  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆───────────────────────────────     88M  $ 47
+   We 21  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆───────────────────────────────     86M  $ 48
+   Tu 20  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆───────────────────────────────     87M  $ 52
+   Mo 19  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆───────────────    118M  $ 60
+   Su 18  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆───────────────────────────────────────────────────────     39M  $ 22
+   Sa 17  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆─────────────────────────────     92M  $ 50
    Fr 16  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆    148M  $ 48
    ■ opus-5-5   ■ haiku-4-5   ■ fable-5-1   ■ sonnet-5-5
 
  TOP SKILLS · 7d                  TOOLS · 7d                       MODELS · 7d
-   workflow-authoring           8   Bash                      4273   opus-5-5            93% ▆▆▆▆▆▆
-   standup-notes                7   mcp Slack                 1409   haiku-4-5            6% ──────
-   writing-plans                6   ToolSearch                 220   fable-5-1            1% ──────
-   distill                      6   mcp linear                 217   sonnet-5-5           0% ──────
-   google-sheets                6   Read                       193
-   ops:triage-alerts            3   SubagentHandback           169
-   grill-me                     3   Agent                      166
-   team-report                  3   Write                      119
+   workflow-authoring         8     Bash             4567            opus-5-5   93% ▆▆▆▆▆▆▆▆▆▆▆▆▆▆─
+   distill                    8     mcp Slack        1409            haiku-4-5   6% ▆──────────────
+   standup-notes              7     Read              242            fable-5-1   1% ───────────────
+   google-sheets              6     ToolSearch        222            sonnet-5-5  0% ───────────────
+   writing-plans              6     mcp linear        217
+   grill-me                   3     Agent             169
+   team-report                3     SubagentHandback  169
+   monthly-report             3     Write             141
+   ops:triage-alerts          3     StructuredOutput   72
+   superpowers:writing-skills 2     Skill              54
 
  tab switch  p period  r refresh  q quit                                * API list-price equivalent
 ```
 
 - **Limits at a glance.** The 5-hour and weekly plan meters with time to reset, the same numbers `/usage` shows.
 - **Where the tokens went.** Tokens per day for the last week split by model, with an API-equivalent cost next to each day.
-- **What you actually use.** Top skills, tools and MCP servers, and the model mix for the period.
-- **Zero tokens, zero network.** cctop only reads local files. It never runs `claude`, never calls an API and never shows prompt text.
+- **What you actually use.** Totals for the period, top skills, tools and MCP servers, the model mix, and on wider terminals tokens per project and Agent calls per subagent type.
+- **Fills the terminal.** Like htop, the frame uses the whole window: limits sit beside the totals from 100 columns, up to five panels show as the width allows, and the panels grow with the height.
+- **Zero tokens, zero network.** cctop only reads local files and writes one cache file of token counts. It never runs `claude`, never calls an API and never shows or stores prompt text.
 
 ## Quick start
 
@@ -53,8 +56,10 @@ git clone https://github.com/smoliji/cctop && cd cctop
 pnpm install && pnpm dev
 ```
 
-The first scan reads every transcript under `~/.claude/projects`, which can take
-a few seconds on a busy machine. After that it refreshes every 60 seconds.
+The screen comes up at once with your plan limits; token history fills in as
+transcripts are read. Parsed counts are cached in `~/.cache/cctop` (or
+`$XDG_CACHE_HOME/cctop`), so later starts take well under a second. After that
+it refreshes every 60 seconds.
 
 ## Keys
 
@@ -73,30 +78,35 @@ Every skill used in the period gets a row: how often it was used, the tokens
 and cost of the turns spent inside it, when it last ran, and where the uses
 came from (`MODEL` loaded it with the Skill tool, `YOU` typed it as a slash
 command). `ALL TIME` is Claude Code's own lifetime counter, which outlives the
-transcripts.
+transcripts. The `SHARE` bar shows each skill's tokens split by model, scaled
+to the busiest skill. It comes last, like htop's command column, and takes
+whatever width the columns leave, so the numbers stay next to the name. The
+column header is a green bar with the sorted column in cyan, `LAST` is cyan for
+skills used today and gray after a week, and a long plugin prefix is cut before
+the skill name. Until the transcripts are read the tab lists the lifetime counts.
 
 ```
  cctop 0.1.0   1 Overview   2 Skills                                         refresh 60s · 11:05:37
 
- SKILLS · 7d                                                             26 skills · sorted by uses
-                                     USES   TOKENS      LAST   COST*  MODEL   YOU   TURNS  ALL TIME
-   workflow-authoring                   8     118M   <1m ago     $66      8     ·    1414        12
-   standup-notes                        7     5.4M    1h ago      $7      1     6      43        10
-   writing-plans                        6     5.9M   19h ago      $3      6     ·      66         7
-   distill                              6      13M   20h ago      $9      6     ·     144        15
-   google-sheets                        6     6.5M   22m ago      $4      6     ·      65         7
-   ops:triage-alerts                    3        ·    6d ago       ·      3     ·       ·        23
-   grill-me                             3       7M    9m ago      $3      3     ·      62         3
-   team-report                          3     3.1M    1d ago      $2      2     1      38         3
-   monthly-report                       3     1.5M    4d ago      $1      3     ·      21         3
-   superpowers:writing-skills           2     8.2M    2d ago      $5      2     ·      93        35
-   tickets:view                         1     741k   19h ago     <$1      1     ·       4        20
-   artifact-design                      1     229k    3d ago     <$1      1     ·       3        16
-   review-pr                            1     2.4M    1h ago      $1      1     ·      32         5
-   config:sync                          1     255k    2d ago     <$1      ·     1       4         5
-   gitlab                               1     380k    2d ago     <$1      1     ·       6        95
-   ops:watch-alerts                     1     520k    6d ago     <$1      ·     1      13        96
-   ↓ 10 more
+ SKILLS · 7d                                              26 skills  174M tokens  27% of all  $103*
+   SKILL                        USES   TOKENS      LAST   COST*  MODEL   YOU  SHARE
+   workflow-authoring              8     118M   <1m ago     $66      8     ·  ▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆▆
+   standup-notes                   7     5.4M    1h ago      $7      1     6  ▆────────────────────
+   distill                         6      13M   20h ago      $9      6     ·  ▆▆───────────────────
+   google-sheets                   6     6.5M   22m ago      $4      6     ·  ▆────────────────────
+   writing-plans                   6     5.9M   19h ago      $3      6     ·  ▆────────────────────
+   grill-me                        3       7M    9m ago      $3      3     ·  ▆────────────────────
+   team-report                     3     3.1M    1d ago      $2      2     1  ▆────────────────────
+   monthly-report                  3     1.5M    4d ago      $1      3     ·  ▆────────────────────
+   ops:triage-alerts               3        ·    6d ago       ·      3     ·  ─────────────────────
+   superpowers:writing-skills      2     8.2M    2d ago      $5      2     ·  ▆────────────────────
+   review-pr                       1     2.4M    1h ago      $1      1     ·  ▆────────────────────
+   tickets:view                    1     741k   19h ago     <$1      1     ·  ▆────────────────────
+   ops:watch-alerts                1     520k    6d ago     <$1      ·     1  ▆────────────────────
+   gitlab                          1     380k    2d ago     <$1      1     ·  ▆────────────────────
+   config:sync                     1     255k    2d ago     <$1      ·     1  ▆────────────────────
+   artifact-design                 1     229k    3d ago     <$1      1     ·  ▆────────────────────
+   ↓ 10 more                                                               ■ opus-5-5   ■ haiku-4-5
 
  tab switch  s sort  ↑↓ scroll  p period  r refresh  q quit             * API list-price equivalent
 ```
@@ -110,6 +120,7 @@ transcripts.
 | `--print`         | render one frame to stdout and exit (sized by `COLUMNS` / `LINES` when piped) |
 | `--tab <name>`    | tab for `--print`: `overview` (default) or `skills`                           |
 | `--json`          | print the computed overview as JSON and exit                                  |
+| `--no-cache`      | do not read or write the transcript cache                                     |
 | `-h`, `--help`    | show help                                                                     |
 | `-v`, `--version` | show the version                                                              |
 
@@ -133,6 +144,11 @@ cctop reads two things, both written by Claude Code itself:
   reads only the cached plan usage (`cachedUsageUtilization`) and skill usage
   counts. Nothing else in that file is touched.
 
+Limits come from `~/.claude.json` alone, so they show before any transcript is
+read. Transcripts are read newest first; the last 7 days fill in as soon as
+their files are done, while the 30-day period shows placeholders, and lifetime
+skill counts on the Skills tab, until the scan reaches the oldest files.
+
 A few things to keep in mind:
 
 - **Costs are API list-price equivalents.** They show what the same tokens would
@@ -145,8 +161,12 @@ A few things to keep in mind:
   them while a session is running; cctop shows how old the numbers are and
   never fetches them itself. Once a window's reset time has passed, its meter
   shows empty with `window reset` until Claude Code fetches fresh numbers.
-- **History goes back about 30 days.** Claude Code cleans up older transcripts,
-  so there is nothing further back to count.
+- **Counts are cached.** The cache holds per-transcript counts keyed by path,
+  size and modification time, and is rebuilt automatically when cctop's parser
+  changes; `--no-cache` turns it off and deleting the directory is always safe.
+- **History goes back 30 days.** The longest period is 30 days, so older
+  transcripts are not read at all, and Claude Code cleans them up by default
+  anyway.
 
 cctop is a personal project and is not affiliated with or endorsed by Anthropic.
 

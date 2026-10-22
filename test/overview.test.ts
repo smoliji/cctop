@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOverview, localDate, shortModel } from '../src/overview.js';
+import { buildOverview, dayStart, lifetimeSkills, localDate, recentDates, shortModel } from '../src/overview.js';
 import { costOf } from '../src/pricing.js';
 import type {
   ApiResponse,
@@ -51,6 +51,7 @@ const data = (d: Partial<TranscriptData> = {}): TranscriptData => ({
   toolCalls: [],
   slashCommands: [],
   files: 1,
+  knownAfter: -Infinity,
   ...d,
 });
 const state = (s: Partial<ClaudeState> = {}): ClaudeState => ({ usage: null, skillUsage: {}, ...s });
@@ -220,11 +221,28 @@ test('skill rows join calls, typed commands, attributed turns and the lifetime c
   );
   assert.equal(o.skills.length, 1);
   const { cost, ...row } = o.skills[0]!;
-  assert.deepEqual(row, { name: 'commit', calls: 1, typed: 1, turns: 2, tokens: 150, lastUsed: NOW + 1, allTime: 40 });
+  assert.deepEqual(row, { name: 'commit', calls: 1, typed: 1, turns: 2, tokens: 150, tokensByModel: { 'opus-5-5': 150 }, lastUsed: NOW + 1, allTime: 40 });
   assert.ok(cost! > 0);
 });
 
-test('top tools group MCP calls per server and keep the top 8', () => {
+test('skill tokens split by model', () => {
+  const o = buildOverview(
+    data({
+      responses: [
+        response({ skill: 'distill', usage: usage({ input: 100 }) }),
+        response({ skill: 'distill', model: 'claude-haiku-4-5-20251001', usage: usage({ input: 30 }) }),
+        response({ skill: 'distill', usage: usage({ output: 20 }) }),
+      ],
+    }),
+    state(),
+    'today',
+    NOW,
+  );
+  assert.equal(o.skills[0]!.tokens, 150);
+  assert.deepEqual(o.skills[0]!.tokensByModel, { 'opus-5-5': 120, 'haiku-4-5': 30 });
+});
+
+test('top tools group MCP calls per server, all tools ranked', () => {
   const calls = [
     call('mcp__claude_ai_Gmail__send'),
     call('mcp__claude_ai_Gmail__search'),
@@ -233,11 +251,93 @@ test('top tools group MCP calls per server and keep the top 8', () => {
     ...'abcdefgh'.split('').map((c) => call(`T${c}`)),
   ];
   const o = buildOverview(data({ toolCalls: calls }), state(), 'today', NOW);
-  assert.equal(o.topTools.length, 8);
+  assert.equal(o.topTools.length, 11);
   assert.deepEqual(o.topTools.slice(0, 3), [
     { name: 'Read', count: 3 },
     { name: 'Gmail', count: 2, server: 'Gmail' },
     { name: 'gcloud', count: 1, server: 'gcloud' },
+  ]);
+});
+
+test('projects group tokens by working directory, named by its basename', () => {
+  const o = buildOverview(
+    data({
+      responses: [
+        response({ project: '/a/cctop', usage: usage({ input: 100 }) }),
+        response({ project: '/a/cctop', usage: usage({ output: 50 }) }),
+        response({ project: '/b/api', usage: usage({ input: 300 }) }),
+        response({ project: '', usage: usage({ input: 10 }) }),
+        response({ project: '/old', usage: usage({ input: 999 }), timestamp: daysAgo(8) }),
+      ],
+    }),
+    state(),
+    '7d',
+    NOW,
+  );
+  assert.deepEqual(o.projects, [
+    { path: '/b/api', name: 'api', tokens: 300 },
+    { path: '/a/cctop', name: 'cctop', tokens: 150 },
+    { path: '', name: 'unknown', tokens: 10 },
+  ]);
+});
+
+test('projects with the same folder name get their parent', () => {
+  const o = buildOverview(
+    data({
+      responses: [
+        response({ project: '/w/cctop/src', usage: usage({ input: 300 }) }),
+        response({ project: '/w/cms/src', usage: usage({ input: 200 }) }),
+        response({ project: '/w/api', usage: usage({ input: 100 }) }),
+      ],
+    }),
+    state(),
+    '7d',
+    NOW,
+  );
+  assert.deepEqual(
+    o.projects.map((p) => p.name),
+    ['cctop/src', 'cms/src', 'api'],
+  );
+});
+
+test('top skills break ties like the skills tab, by tokens before the name', () => {
+  const o = buildOverview(
+    data({
+      responses: [response({ skill: 'b', usage: usage({ input: 500 }) })],
+      toolCalls: [call('Skill', { skill: 'a' }), call('Skill', { skill: 'b' })],
+    }),
+    state(),
+    'today',
+    NOW,
+  );
+  assert.deepEqual(o.topSkills, [
+    { name: 'b', count: 1 },
+    { name: 'a', count: 1 },
+  ]);
+  assert.deepEqual(
+    o.skills.map((s) => s.name),
+    ['b', 'a'],
+  );
+});
+
+test('agent types count Agent calls by subagent type within the period', () => {
+  const o = buildOverview(
+    data({
+      toolCalls: [
+        call('Agent', { subagentType: 'general-purpose' }),
+        call('Agent', { subagentType: 'general-purpose' }),
+        call('Agent', { subagentType: 'Explore' }),
+        call('Agent', { subagentType: 'Explore', timestamp: daysAgo(1) }),
+        call('Read'),
+      ],
+    }),
+    state(),
+    'today',
+    NOW,
+  );
+  assert.deepEqual(o.topAgents, [
+    { name: 'general-purpose', count: 2 },
+    { name: 'Explore', count: 1 },
   ]);
 });
 
@@ -270,4 +370,27 @@ test('usage is passed through from state', () => {
 test('helpers', () => {
   assert.equal(shortModel('claude-haiku-4-5-20251001'), 'haiku-4-5');
   assert.equal(localDate(new Date(2026, 0, 5, 23, 59).getTime()), '2026-01-05');
+});
+
+test('pending marks sections the scan has not reached', () => {
+  const pending = (knownAfter: number, period: '7d' | '30d') => buildOverview(data({ knownAfter }), state(), period, NOW).pending;
+  assert.deepEqual(pending(-Infinity, '30d'), { days: false, period: false });
+  assert.deepEqual(pending(dayStart(NOW, 10), '7d'), { days: false, period: false });
+  assert.deepEqual(pending(dayStart(NOW, 10), '30d'), { days: false, period: true });
+  assert.deepEqual(pending(dayStart(NOW, 6), '7d'), { days: true, period: true }, 'a day start itself is not proven read');
+  assert.equal(pending(dayStart(NOW, 2), '7d').days, true);
+});
+
+test('lifetimeSkills sorts by lifetime count then name', () => {
+  const rows = lifetimeSkills(state({ skillUsage: { b: 3, a: 3, c: 9 } }));
+  assert.deepEqual(rows.map((r) => [r.name, r.allTime]), [['c', 9], ['a', 3], ['b', 3]]);
+  assert.deepEqual(rows[0], { name: 'c', calls: 0, typed: 0, turns: 0, tokens: 0, tokensByModel: {}, cost: null, lastUsed: null, allTime: 9 });
+});
+
+test('recentDates returns 7 local dates newest first', () => {
+  const dates = recentDates(NOW);
+  assert.equal(dates.length, 7);
+  assert.equal(dates[0], '2026-10-21');
+  assert.equal(dates[6], '2026-10-15');
+  assert.deepEqual(buildOverview(data(), state(), '7d', NOW).days.map((d) => d.date), dates);
 });

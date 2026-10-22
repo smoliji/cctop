@@ -53,6 +53,15 @@ export interface TranscriptData {
   toolCalls: ToolCall[];
   slashCommands: SlashCommand[];
   files: number;
+  /** Every event later than this is included; `-Infinity` once the scan has finished. */
+  knownAfter: number;
+}
+
+/** Per-file parse result as kept in memory and in the on-disk cache. */
+export interface FileEntry {
+  size: number;
+  mtimeMs: number;
+  events: FileEvents;
 }
 
 export interface LimitMeter {
@@ -103,10 +112,20 @@ export interface SkillRow {
   /** API responses made while the skill was active. */
   turns: number;
   tokens: number;
+  /** Tokens of those turns by short model name. */
+  tokensByModel: Record<string, number>;
   cost: number | null;
   lastUsed: number | null;
   /** Lifetime count from `skillUsage`, which outlives transcript retention. */
   allTime: number | null;
+}
+
+/** Tokens spent in one working directory over the period. */
+export interface ProjectRow {
+  /** Working directory of the session. */
+  path: string;
+  name: string;
+  tokens: number;
 }
 
 export interface ModelShare {
@@ -131,9 +150,15 @@ export interface Overview {
     responses: number;
     subagents: number;
   };
+  /** Rankings hold every entry, sorted; the screen cuts them to the rows it has. */
   topSkills: Ranked[];
   skills: SkillRow[];
   topTools: Ranked[];
   models: ModelShare[];
+  projects: ProjectRow[];
+  /** `Agent` tool calls by subagent type. */
+  topAgents: Ranked[];
   usage: PlanUsage | null;
+  /** Sections whose events are not all read yet because the scan is still on older files. */
+  pending: { days: boolean; period: boolean };
 }

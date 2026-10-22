@@ -1,3 +1,4 @@
+import { basename, dirname, join } from 'node:path';
 import { costOf, normalizeModel } from './pricing.js';
 import type {
   ApiResponse,
@@ -6,14 +7,20 @@ import type {
   ModelShare,
   Overview,
   Period,
+  ProjectRow,
   Ranked,
   SkillRow,
   TokenUsage,
   TranscriptData,
 } from './types.js';
 
-const TOP = 8;
 const PERIOD_DAYS: Record<Period, number> = { today: 1, '7d': 7, '30d': 30 };
+export const HISTORY_DAYS = 7;
+
+/** Oldest instant any period can show. */
+export const horizon = (now: number) => dayStart(now, Math.max(...Object.values(PERIOD_DAYS)) - 1);
+/** Start of the per-day history. */
+export const historyStart = (now: number) => dayStart(now, HISTORY_DAYS - 1);
 
 export function buildOverview(
   data: TranscriptData,
@@ -21,7 +28,7 @@ export function buildOverview(
   period: Period,
   now: number,
 ): Overview {
-  const days = lastDays(data.responses, now, 7);
+  const days = lastDays(data.responses, now, HISTORY_DAYS);
   const since = dayStart(now, PERIOD_DAYS[period] - 1);
   const responses = data.responses.filter((r) => r.timestamp >= since);
   const calls = data.toolCalls.filter((c) => c.timestamp >= since);
@@ -40,6 +47,14 @@ export function buildOverview(
     const row = tools.get(name) ?? { name, count: 0, ...(server ? { server } : {}) };
     row.count++;
     tools.set(name, row);
+  }
+
+  const agents = new Map<string, Ranked>();
+  for (const c of calls) {
+    if (!c.subagentType) continue;
+    const row = agents.get(c.subagentType) ?? { name: c.subagentType, count: 0 };
+    row.count++;
+    agents.set(c.subagentType, row);
   }
 
   return {
@@ -61,12 +76,29 @@ export function buildOverview(
       responses: responses.length,
       subagents: new Set(responses.flatMap((r) => (r.agentId ? [r.agentId] : []))).size,
     },
-    topSkills: rank(skills.map((s) => ({ name: s.name, count: s.calls + s.typed })).filter((s) => s.count > 0)),
+    // In the order of `skills`, so ties sort the same on both tabs.
+    topSkills: skills.map((s) => ({ name: s.name, count: s.calls + s.typed })).filter((s) => s.count > 0),
     skills,
     topTools: rank([...tools.values()]),
     models: modelShares(responses),
+    projects: projectRows(responses),
+    topAgents: rank([...agents.values()]),
     usage: state.usage,
+    // Events after `knownAfter` are known; one exactly at a day start is not proven read yet.
+    pending: { days: data.knownAfter >= historyStart(now), period: data.knownAfter >= since },
   };
+}
+
+/** Lifetime skill counts from `~/.claude.json`, shown while transcripts are still being read. */
+export function lifetimeSkills(state: ClaudeState): SkillRow[] {
+  return Object.entries(state.skillUsage)
+    .map(([name, allTime]) => ({ name, calls: 0, typed: 0, turns: 0, tokens: 0, tokensByModel: {}, cost: null, lastUsed: null, allTime }))
+    .sort((a, b) => b.allTime - a.allTime || a.name.localeCompare(b.name));
+}
+
+/** Local dates of the last `count` days, newest first. */
+export function recentDates(now: number, count = HISTORY_DAYS): string[] {
+  return Array.from({ length: count }, (_, i) => localDate(dayStart(now, i)));
 }
 
 /** `claude-opus-5-5-20260101` -> `opus-5-5`. */
@@ -86,7 +118,7 @@ export function localDate(ts: number): string {
 }
 
 /** Local midnight `back` days before the day of `now`; via Date so DST days stay whole. */
-function dayStart(now: number, back: number): number {
+export function dayStart(now: number, back: number): number {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - back);
@@ -94,8 +126,8 @@ function dayStart(now: number, back: number): number {
 }
 
 function lastDays(responses: ApiResponse[], now: number, count: number): DayRow[] {
-  const rows = Array.from({ length: count }, (_, i) => ({
-    date: localDate(dayStart(now, i)),
+  const rows = recentDates(now, count).map((date) => ({
+    date,
     tokensByModel: {} as Record<string, number>,
     tokens: 0,
     costs: [] as (number | null)[],
@@ -119,7 +151,7 @@ function skillRows(data: TranscriptData, since: number, state: ClaudeState): Ski
     let row = rows.get(name);
     if (!row) {
       const allTime = Object.hasOwn(state.skillUsage, name) ? state.skillUsage[name]! : null;
-      row = { name, calls: 0, typed: 0, turns: 0, tokens: 0, cost: null, lastUsed: null, allTime, costs: [] };
+      row = { name, calls: 0, typed: 0, turns: 0, tokens: 0, tokensByModel: {}, cost: null, lastUsed: null, allTime, costs: [] };
       rows.set(name, row);
     }
     row.lastUsed = Math.max(row.lastUsed ?? 0, timestamp);
@@ -139,8 +171,11 @@ function skillRows(data: TranscriptData, since: number, state: ClaudeState): Ski
   for (const r of data.responses) {
     if (r.timestamp < since || !r.skill) continue;
     const row = touch(r.skill, r.timestamp);
+    const tokens = tokensOf(r.usage);
+    const model = shortModel(r.model);
     row.turns++;
-    row.tokens += tokensOf(r.usage);
+    row.tokens += tokens;
+    row.tokensByModel[model] = (row.tokensByModel[model] ?? 0) + tokens;
     row.costs.push(costOfResponse(r));
   }
   return [...rows.values()]
@@ -166,6 +201,23 @@ function modelShares(responses: ApiResponse[]): ModelShare[] {
       cost: sumKnown(g.costs),
     }))
     .sort((a, b) => b.tokens - a.tokens || a.name.localeCompare(b.name));
+}
+
+function projectRows(responses: ApiResponse[]): ProjectRow[] {
+  const groups = new Map<string, ProjectRow>();
+  for (const r of responses) {
+    const row = groups.get(r.project) ?? { path: r.project, name: basename(r.project) || r.project || 'unknown', tokens: 0 };
+    row.tokens += tokensOf(r.usage);
+    groups.set(r.project, row);
+  }
+  const rows = [...groups.values()];
+  const seen = new Map<string, number>();
+  for (const row of rows) seen.set(row.name, (seen.get(row.name) ?? 0) + 1);
+  // Two `src` folders read the same; their parent tells them apart.
+  for (const row of rows) {
+    if (seen.get(row.name)! > 1 && row.path) row.name = join(basename(dirname(row.path)), basename(row.path));
+  }
+  return rows.sort((a, b) => b.tokens - a.tokens || a.name.localeCompare(b.name));
 }
 
 /** `mcp__claude_ai_Gmail__send` -> `Gmail`; null for non-MCP tools. */
@@ -200,6 +252,7 @@ function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
 
+/** All, sorted by count, then name. */
 function rank(rows: Ranked[]): Ranked[] {
-  return rows.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, TOP);
+  return rows.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }

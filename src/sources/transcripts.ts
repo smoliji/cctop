@@ -1,8 +1,10 @@
-import { createReadStream } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createReadStream, readFileSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import type { ApiResponse, FileEvents, SlashCommand, ToolCall, TokenUsage, TranscriptData } from '../types.js';
+import type { ApiResponse, FileEntry, FileEvents, SlashCommand, ToolCall, TokenUsage, TranscriptData } from '../types.js';
+import { loadCache, saveCache } from './cache.js';
 
 type Json = Record<string, any>;
 
@@ -134,56 +136,170 @@ async function listJsonl(root: string): Promise<string[]> {
   }
 }
 
-interface Entry {
+export interface Progress {
+  /** Files read in this refresh. */
+  done: number;
+  /** Files this refresh has to read; cached and unchanged files are not counted. */
+  total: number;
+}
+
+export interface ScanOptions {
+  /** Events before this are never shown; files last modified over a day earlier are not read. */
+  since?: number;
+  /** On the first scan, once every file modified at or after this is read, `onPartial` gets the data so far. */
+  partialAt?: number;
+  onProgress?: (progress: Progress) => void;
+  onPartial?: (data: TranscriptData) => void;
+}
+
+export interface StoreOptions {
+  /** Path of the on-disk cache; none means no cache. */
+  cache?: string;
+  now?: () => number;
+}
+
+const DAY = 86_400_000;
+const PROGRESS_MS = 100;
+const SAVE_MS = 15 * 60_000;
+
+/** Changes whenever this parser changes, so a cache written by another parser is ignored. */
+export const PARSER = createHash('sha256').update(readFileSync(new URL(import.meta.url))).digest('hex').slice(0, 16);
+
+interface Listed {
+  path: string;
   size: number;
   mtimeMs: number;
-  events: FileEvents;
 }
 
 /** Incrementally parsed view of every transcript under `root`. */
 export class TranscriptStore {
-  private readonly files = new Map<string, Entry>();
+  private readonly files = new Map<string, FileEntry>();
   private merged: TranscriptData | null = null;
+  /** The on-disk cache, loaded once and dropped after the first refresh. */
+  private cached: Map<string, FileEntry> | null = null;
+  private running: Promise<TranscriptData> | null = null;
+  private saving: Promise<void> = Promise.resolve();
+  private savedAt = -Infinity;
+  private unsaved = false;
+  private closed = false;
 
-  constructor(private readonly root: string) {}
+  constructor(
+    private readonly root: string,
+    private readonly options: StoreOptions = {},
+  ) {}
 
-  async refresh(): Promise<TranscriptData> {
-    const paths = await listJsonl(this.root);
+  /** A call while a refresh runs joins it instead of starting a second scan. */
+  refresh(options: ScanOptions = {}): Promise<TranscriptData> {
+    this.running ??= this.scan(options).finally(() => {
+      this.running = null;
+    });
+    return this.running;
+  }
+
+  /** Resolves once the pending cache write, if any, is done. */
+  flush(): Promise<void> {
+    return this.saving;
+  }
+
+  /**
+   * Stops a running scan after the file in hand and writes every file parsed so
+   * far, throttle or not, so quitting mid-scan never throws that work away.
+   */
+  async close(): Promise<void> {
+    this.closed = true;
+    await this.running?.catch(() => {});
+    const { cache } = this.options;
+    if (cache && this.unsaved) this.save(cache);
+    return this.saving;
+  }
+
+  private async scan({ since = -Infinity, partialAt, onProgress, onPartial }: ScanOptions): Promise<TranscriptData> {
+    const { cache, now = Date.now } = this.options;
+    if (cache && !this.merged) this.cached = await loadCache(cache, this.root, PARSER);
+
+    const listed = await this.list(since);
     let changed = false;
 
-    const live = new Set(paths);
+    const live = new Set(listed.map((f) => f.path));
     for (const path of this.files.keys()) {
       if (live.has(path)) continue;
       this.files.delete(path);
       changed = true;
     }
 
-    for (const path of paths) {
-      const info = await stat(path).catch(() => null);
-      if (!info) {
-        changed = this.files.delete(path) || changed;
-        continue;
+    // Newest first: a record is written before its file's mtime, so once every file
+    // modified after T is read, every event after T is known.
+    listed.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    const todo: Listed[] = [];
+    for (const file of listed) {
+      if (matches(this.files.get(file.path), file)) continue;
+      const cached = this.cached?.get(file.path);
+      if (matches(cached, file)) {
+        this.files.set(file.path, cached!);
+        changed = true;
+      } else {
+        todo.push(file);
       }
-      const known = this.files.get(path);
-      if (known && known.size === info.size && known.mtimeMs === info.mtimeMs) continue;
+    }
+    this.cached = null;
+
+    const total = todo.length;
+    if (total) onProgress?.({ done: 0, total });
+    let emitted = false;
+    let reported = Date.now();
+    for (const [i, file] of todo.entries()) {
+      if (this.closed) break;
+      if (!this.merged && onPartial && partialAt !== undefined && !emitted && file.mtimeMs < partialAt) {
+        emitted = true;
+        onPartial(this.merge(file.mtimeMs));
+      }
       // On a failed read keep the previous events and leave the file unrecorded so the next refresh retries it.
-      const events = await parseFile(path).catch(() => null);
-      if (!events) continue;
-      this.files.set(path, { size: info.size, mtimeMs: info.mtimeMs, events });
-      changed = true;
+      const events = await parseFile(file.path).catch(() => null);
+      if (events) {
+        this.files.set(file.path, { size: file.size, mtimeMs: file.mtimeMs, events });
+        changed = true;
+        this.unsaved = true;
+      }
+      if (i === total - 1 || Date.now() - reported >= PROGRESS_MS) {
+        reported = Date.now();
+        onProgress?.({ done: i + 1, total });
+      }
     }
 
-    if (changed || !this.merged) this.merged = this.merge();
+    if (changed || !this.merged) this.merged = this.merge(-Infinity);
+    if (cache && this.unsaved && !this.closed && now() - this.savedAt >= SAVE_MS) this.save(cache);
     return this.merged;
   }
 
-  private merge(): TranscriptData {
+  private save(cache: string): void {
+    this.savedAt = (this.options.now ?? Date.now)();
+    this.unsaved = false;
+    const files = new Map(this.files);
+    this.saving = this.saving.then(() => saveCache(cache, this.root, PARSER, files));
+  }
+
+  /** Transcripts that can still hold a shown event, with the stat taken before any read. */
+  private async list(since: number): Promise<Listed[]> {
+    const paths = await listJsonl(this.root);
+    const stats = await Promise.all(paths.map((path) => stat(path).catch(() => null)));
+    return paths.flatMap((path, i) => {
+      const info = stats[i];
+      // The day of margin covers clocks that disagree between machines syncing transcripts.
+      return info && info.mtimeMs >= since - DAY ? [{ path, size: info.size, mtimeMs: info.mtimeMs }] : [];
+    });
+  }
+
+  private merge(knownAfter: number): TranscriptData {
     const all = [...this.files.values()].map((f) => f.events);
     return {
       responses: final(all.flatMap((e) => e.responses)),
       toolCalls: unique<ToolCall>(all.flatMap((e) => e.toolCalls)),
       slashCommands: unique<SlashCommand>(all.flatMap((e) => e.slashCommands)),
       files: this.files.size,
+      knownAfter,
     };
   }
 }
+
+const matches = (entry: FileEntry | undefined, file: Listed) =>
+  entry !== undefined && entry.size === file.size && entry.mtimeMs === file.mtimeMs;
