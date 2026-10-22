@@ -47,7 +47,7 @@ keeps on your disk, so watching it costs nothing.
 - **Where the tokens went.** Tokens per day for the last week split by model, with an API-equivalent cost next to each day.
 - **What you actually use.** Totals for the period, top skills, tools and MCP servers, the model mix, and on wider terminals tokens per project and Agent calls per subagent type.
 - **Fills the terminal.** Like htop, the frame uses the whole window: limits sit beside the totals from 100 columns, up to five panels show as the width allows, and the panels grow with the height.
-- **Zero tokens, zero network.** cctop only reads local files and writes one cache file of token counts. It never runs `claude`, never calls an API and never shows or stores prompt text.
+- **Zero tokens.** cctop reads local files and writes one cache file of token counts. To keep the limits fresh it runs `claude -p /usage`, which Claude Code answers without a model turn. cctop never calls an API itself and never shows or stores prompt text.
 
 ## Quick start
 
@@ -121,6 +121,7 @@ the skill name. Until the transcripts are read the tab lists the lifetime counts
 | `--tab <name>`    | tab for `--print`: `overview` (default) or `skills`                           |
 | `--json`          | print the computed overview as JSON and exit                                  |
 | `--no-cache`      | do not read or write the transcript cache                                     |
+| `--no-usage`      | do not run `claude -p /usage`; limits are only as fresh as Claude Code's cache |
 | `-h`, `--help`    | show help                                                                     |
 | `-v`, `--version` | show the version                                                              |
 
@@ -157,10 +158,14 @@ A few things to keep in mind:
   are baked into `src/pricing.json`; `pnpm prices` regenerates it. A day or
   model that includes a model missing from that list shows no cost rather than
   a partial one.
-- **Plan limits are only as fresh as Claude Code's cache.** Claude Code refreshes
-  them while a session is running; cctop shows how old the numbers are and
-  never fetches them itself. Once a window's reset time has passed, its meter
-  shows empty with `window reset` until Claude Code fetches fresh numbers.
+- **Plan limits come from Claude Code's cache.** Claude Code writes them to
+  `~/.claude.json` only when `/usage` runs, so on a refresh that finds them
+  older than the interval cctop runs `claude -p /usage --no-session-persistence`
+  in a temp dir. Print mode handles `/usage` without a model turn; if a reply
+  ever reports a turn or a cost, cctop shows an error instead of hiding it. The
+  call takes about 2 s of CPU. Turn it off with `--no-usage`; cctop then shows
+  how old the numbers are, and once a window's reset time has passed its meter
+  shows empty with `window reset`.
 - **Counts are cached.** The cache holds per-transcript counts keyed by path,
   size and modification time, and is rebuilt automatically when cctop's parser
   changes; `--no-cache` turns it off and deleting the directory is always safe.

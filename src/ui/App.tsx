@@ -18,21 +18,28 @@ interface Props {
   readState: () => Promise<ClaudeState>;
   scan: Scan;
   build: Build;
+  /** Has Claude Code fetch fresh plan usage into `.claude.json`; omitted, the limits are only read. */
+  fetchUsage?: () => Promise<void>;
   interval: number;
   version: string;
   now?: () => number;
 }
 
-type Source = 'state' | 'scan' | 'build';
+type Source = 'state' | 'usage' | 'scan' | 'build';
 
 const PERIODS: Period[] = ['today', '7d', '30d'];
+/** Claude Code answers `/usage` from its own cache for about a minute after a fetch. */
+const MIN_USAGE_MS = 61_000;
+/** Wait after a fetch that left the cache as it was, so a longer cache on Claude Code's side never spins. */
+const MIN_RETRY_MS = 15_000;
 
-export function App({ initial, readState, scan, build, interval, version, now = Date.now }: Props) {
+export function App({ initial, readState, scan, build, fetchUsage, interval, version, now = Date.now }: Props) {
   const { exit } = useApp();
   const { columns, rows } = useWindowSize();
   const stateRef = useRef(initial);
   const dataRef = useRef<TranscriptData | null>(null);
   const busy = useRef(false);
+  const fetching = useRef(false);
   const [state, setState] = useState(initial);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -74,6 +81,28 @@ export function App({ initial, readState, scan, build, interval, version, now = 
     }
   }, [readState, rebuild, report]);
 
+  const usagePeriod = Math.max(interval * 1000, MIN_USAGE_MS);
+  const usageAge = useCallback(() => now() - (stateRef.current.usage?.fetchedAt ?? 0), [now]);
+
+  /** Fetches the plan usage when it is older than a period; resolves to whether it ran the command and failed. */
+  const updateUsage = useCallback(async () => {
+    await reread();
+    // Another Claude Code may have fetched it in the meantime.
+    if (!fetchUsage || fetching.current || usageAge() < usagePeriod) return false;
+    fetching.current = true;
+    try {
+      await fetchUsage();
+      report('usage');
+      await reread();
+      return false;
+    } catch (err) {
+      report('usage', message(err));
+      return true;
+    } finally {
+      fetching.current = false;
+    }
+  }, [fetchUsage, usageAge, usagePeriod, reread, report]);
+
   const rescan = useCallback(async () => {
     if (busy.current) return;
     busy.current = true;
@@ -100,12 +129,30 @@ export function App({ initial, readState, scan, build, interval, version, now = 
   }, [scan, now, rebuild, report]);
 
   const refresh = useCallback(() => {
-    void reread();
+    void updateUsage();
     void rescan();
-  }, [reread, rescan]);
+  }, [updateUsage, rescan]);
 
-  // `initial` is fresh, so the first round only needs the transcripts.
+  // `initial` was just read, so the first round only needs the transcripts.
   useEffect(() => void rescan(), []);
+
+  // Usage runs on its own clock, due a period after the last fetch: on the refresh tick
+  // it would come a few seconds short of a period, and Claude Code would answer from its cache.
+  useEffect(() => {
+    if (!fetchUsage) return;
+    let timer: ReturnType<typeof setTimeout>;
+    let stopped = false;
+    const loop = async () => {
+      const failed = await updateUsage();
+      if (stopped) return;
+      timer = setTimeout(loop, failed ? usagePeriod : Math.max(MIN_RETRY_MS, usagePeriod - usageAge()));
+    };
+    void loop();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [fetchUsage, updateUsage, usageAge, usagePeriod]);
 
   useEffect(() => {
     const timer = setInterval(refresh, interval * 1000);
@@ -138,7 +185,7 @@ export function App({ initial, readState, scan, build, interval, version, now = 
       overview={overview}
       state={state}
       now={now()}
-      status={{ version, interval, refreshedAt, refreshing, progress, error: errors.state ?? errors.scan ?? errors.build }}
+      status={{ version, interval, refreshedAt, refreshing, progress, error: errors.state ?? errors.usage ?? errors.scan ?? errors.build }}
       columns={columns}
       rows={rows}
       view={{ ...view, skillOffset: offset }}

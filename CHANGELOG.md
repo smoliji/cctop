@@ -8,7 +8,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 - Overview screen: plan limits (5h, weekly and per-model weekly) with time to
   reset, as last cached by Claude Code in `~/.claude.json`, plus how old that
-  cache is.
+  cache is. A stale cache is refreshed with `claude -p /usage`, which uses no
+  tokens (`--no-usage` turns it off).
 - Tokens per day for the last 7 days with average, peak and weekly total, an
   API list-price cost estimate per day and a token scale under the bars.
 - Top skills (Skill tool calls and typed slash commands), top tools with MCP

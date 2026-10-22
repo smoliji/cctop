@@ -8,6 +8,7 @@ import { render, renderToString } from 'ink';
 import { buildOverview, historyStart, horizon } from './overview.js';
 import { cachePath } from './sources/cache.js';
 import { readClaudeState } from './sources/claudeJson.js';
+import { fetchUsage } from './sources/usage.js';
 import { TranscriptStore, type ScanOptions } from './sources/transcripts.js';
 import { App } from './ui/App.js';
 import { DEFAULT_VIEW, Screen, TABS, type Tab } from './ui/Screen.js';
@@ -24,6 +25,7 @@ Options:
   --tab <name>    tab for --print: overview or skills (default overview)
   --json          print the overview as JSON and exit
   --no-cache      do not read or write the transcript cache
+  --no-usage      do not run \`claude -p /usage\` to refresh the plan limits
   -h, --help      show this help
   -v, --version   show the version
 
@@ -35,10 +37,12 @@ Keys:
   r          refresh now
   q          quit
 
-cctop only reads local files: transcripts in <dir>/projects and the cached
-plan usage in <dir>/.claude.json, or ~/.claude.json when that does not exist.
-It never calls the API. To start fast it keeps parsed token counts (no message
-text) in ~/.cache/cctop.
+cctop reads local files: transcripts in <dir>/projects and the cached plan
+usage in <dir>/.claude.json, or ~/.claude.json when that does not exist. Claude
+Code updates that cache only on /usage, so on every refresh with a cache older
+than the interval cctop runs \`claude -p /usage\`, which Claude Code answers
+without a model turn and so without tokens. cctop itself never calls the API.
+To start fast it keeps parsed token counts (no message text) in ~/.cache/cctop.
 `;
 
 function fail(msg: string): never {
@@ -83,6 +87,7 @@ function parse() {
         tab: { type: 'string', default: 'overview' },
         // A plain flag: parseArgs only negates `--cache` from Node 22.4, and engines allow 22.0.
         'no-cache': { type: 'boolean', default: false },
+        'no-usage': { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
         version: { type: 'boolean', short: 'v', default: false },
       },
@@ -147,7 +152,15 @@ async function main() {
   // cursor where the shell left it, so home it or the frame starts mid-screen.
   process.stdout.write('\x1b[?1049h\x1b[H');
   const { waitUntilExit, unmount } = render(
-    <App initial={initial} readState={readState} scan={scan} build={buildOverview} interval={interval} version={version()} />,
+    <App
+      initial={initial}
+      readState={readState}
+      scan={scan}
+      build={buildOverview}
+      fetchUsage={args['no-usage'] ? undefined : () => fetchUsage(args.dir ?? process.env.CLAUDE_CONFIG_DIR)}
+      interval={interval}
+      version={version()}
+    />,
     { exitOnCtrlC: false, alternateScreen: true },
   );
   process.on('SIGTERM', () => unmount());

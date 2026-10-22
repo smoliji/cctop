@@ -372,16 +372,26 @@ interface AppOptions {
   scan?: Scan;
   build?: Build;
   readState?: () => Promise<ClaudeState>;
+  fetchUsage?: () => Promise<void>;
   interval?: number;
+  start?: ClaudeState;
 }
 
-function app({ scan = async () => data, build = () => overview, readState = async () => initial, interval = 60 }: AppOptions = {}) {
+function app({
+  scan = async () => data,
+  build = () => overview,
+  readState = async () => initial,
+  fetchUsage,
+  interval = 60,
+  start = initial,
+}: AppOptions = {}) {
   return render(
     <App
-      initial={initial}
+      initial={start}
       readState={readState}
       scan={scan}
       build={build}
+      fetchUsage={fetchUsage}
       interval={interval}
       version="0.1.0"
       now={() => NOW}
@@ -754,4 +764,54 @@ test('sortSkills breaks ties by tokens', () => {
   const a = { ...overview.skills[0]!, name: 'a', calls: 3, typed: 0, tokens: 1 };
   const b = { ...overview.skills[0]!, name: 'b', calls: 3, typed: 0, tokens: 2 };
   assert.deepEqual(sortSkills([a, b], 'uses').map((r) => r.name), ['b', 'a']);
+});
+
+const usageAt = (fetchedAt: number): ClaudeState => ({ ...initial, usage: { ...initial.usage!, fetchedAt } });
+
+test('stale limits are fetched at start and the fresh ones shown', async () => {
+  let fetches = 0;
+  let state = usageAt(NOW - 2 * HOUR);
+  const fresh: ClaudeState = { ...usageAt(NOW), usage: { ...initial.usage!, fetchedAt: NOW, meters: [{ label: '5h', percent: 77, resetsAt: null }] } };
+  const { lastFrame, unmount } = app({
+    start: state,
+    readState: async () => state,
+    fetchUsage: async () => {
+      fetches++;
+      state = fresh;
+    },
+  });
+  await tick();
+  assert.equal(fetches, 1);
+  assert.match(text(lastFrame()), /77%/);
+  unmount();
+});
+
+test('limits fetched within the interval are not fetched again', async () => {
+  let fetches = 0;
+  const { stdin, unmount } = app({
+    start: usageAt(NOW - 10_000),
+    readState: async () => usageAt(NOW - 10_000),
+    fetchUsage: async () => void fetches++,
+  });
+  await tick();
+  stdin.write('r');
+  await tick();
+  assert.equal(fetches, 0);
+  unmount();
+});
+
+test('a failed usage fetch shows in the header and keeps the cached limits', async () => {
+  const stale = usageAt(NOW - 2 * HOUR);
+  const { lastFrame, unmount } = app({
+    start: stale,
+    readState: async () => stale,
+    fetchUsage: async () => {
+      throw new Error('claude -p /usage used a model turn');
+    },
+  });
+  await tick();
+  const f = text(lastFrame());
+  assert.match(f, /used a model turn/);
+  assert.match(f, /42%/);
+  unmount();
 });
