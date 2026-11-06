@@ -131,8 +131,11 @@ async function listJsonl(root: string): Promise<string[]> {
   try {
     const entries = await readdir(root, { recursive: true, withFileTypes: true });
     return entries.filter((e) => e.isFile() && e.name.endsWith('.jsonl')).map((e) => join(e.parentPath, e.name));
-  } catch {
-    return [];
+  } catch (err) {
+    // Any other error, like a subdirectory removed mid-walk, fails the refresh, which keeps the last data.
+    const { code, path } = err as NodeJS.ErrnoException;
+    if (code === 'ENOENT' && path === root) return [];
+    throw err;
   }
 }
 

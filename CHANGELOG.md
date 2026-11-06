@@ -44,3 +44,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
   written on quit too, so even a session closed during the first scan speeds
   up the next start. Only transcripts that can still appear in the 30-day
   period are read.
+
+### Fixed
+
+- A transcript directory that cannot be read no longer empties the dashboard
+  with zero totals. The refresh fails with an error in the header and the last
+  data stays on screen.

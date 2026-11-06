@@ -185,6 +185,21 @@ test('TranscriptStore keeps a file whose read failed and retries it', { skip: pr
   assert.equal(fixed.files, 3);
 });
 
+test('TranscriptStore fails a refresh when a directory cannot be listed', { skip: process.getuid?.() === 0 }, async (t) => {
+  for (const dir of ['', 'proj-a']) {
+    const root = copy(t);
+    const store = new TranscriptStore(root);
+    assert.equal((await store.refresh()).responses.length, 3);
+
+    const locked = join(root, dir);
+    chmodSync(locked, 0o000);
+    await assert.rejects(store.refresh(), { code: 'EACCES' });
+
+    chmodSync(locked, 0o755);
+    assert.equal((await store.refresh()).responses.length, 3, 'the next refresh still has every file');
+  }
+});
+
 const DAY = 86_400_000;
 
 /** One file holding one response, last modified `age` ms ago. */
