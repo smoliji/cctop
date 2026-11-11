@@ -4,6 +4,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-11
+
 ### Added
 
 - Overview screen: plan limits (5h, weekly and per-model weekly) with time to
@@ -45,8 +47,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
   fills in while transcripts are read, newest first, with progress in the
   header. Transcript cache in `~/.cache/cctop` (`--no-cache` to disable),
   written on quit too, so even a session closed during the first scan speeds
-  up the next start. Only transcripts that can still appear in the 30-day
-  period are read.
+  up the next start. Only transcripts that can still appear in the 60-day
+  history are read.
 
 ### Fixed
 
