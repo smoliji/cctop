@@ -65,9 +65,9 @@ it refreshes every 60 seconds.
 
 | Key                 | Action                                  |
 | ------------------- | --------------------------------------- |
-| `1` / `2` / `Tab`   | switch between Overview and Skills      |
+| `1` / `2` / `3` / `Tab` | switch between Overview, Skills and History |
 | `s`                 | sort skills by uses, tokens or recency  |
-| `↑` `↓` `PgUp` `PgDn` | scroll the skills list                |
+| `↑` `↓` `PgUp` `PgDn` | scroll the skills list or the days    |
 | `p`                 | switch period: today / 7d / 30d         |
 | `r`                 | refresh now                             |
 | `q` / `Ctrl-C`      | quit                                    |
@@ -111,6 +111,13 @@ the skill name. Until the transcripts are read the tab lists the lifetime counts
  tab switch  s sort  ↑↓ scroll  p period  r refresh  q quit             * API list-price equivalent
 ```
 
+### History tab
+
+Tokens per day for the last 60 days, as many as the terminal is tall, with the
+same bars, axis and legend as the Overview. Scroll with the arrows to older
+days; the title then names the dates shown, and the average, peak, total and
+bar scale cover only those days.
+
 ## Flags
 
 | Flag              | Effect                                                                        |
@@ -118,7 +125,7 @@ the skill name. Until the transcripts are read the tab lists the lifetime counts
 | `--interval <s>`  | auto refresh period in seconds (default 60)                                   |
 | `--dir <path>`    | Claude config dir (default `$CLAUDE_CONFIG_DIR` or `~/.claude`), see below    |
 | `--print`         | render one frame to stdout and exit (sized by `COLUMNS` / `LINES` when piped) |
-| `--tab <name>`    | tab for `--print`: `overview` (default) or `skills`                           |
+| `--tab <name>`    | tab for `--print`: `overview` (default), `skills` or `history`                |
 | `--json`          | print the computed overview as JSON and exit                                  |
 | `--no-cache`      | do not read or write the transcript cache                                     |
 | `--no-usage`      | do not run `claude -p /usage`; limits are only as fresh as Claude Code's cache |
@@ -170,9 +177,10 @@ A few things to keep in mind:
 - **Counts are cached.** The cache holds per-transcript counts keyed by path,
   size and modification time, and is rebuilt automatically when cctop's parser
   changes; `--no-cache` turns it off and deleting the directory is always safe.
-- **History goes back 30 days.** The longest period is 30 days, so older
-  transcripts are not read at all, and Claude Code cleans them up by default
-  anyway.
+- **History goes back 60 days.** The History tab shows 60 days and the longest
+  period is 30, so older transcripts are not read at all. Claude Code deletes
+  transcripts after 30 days by default; raise `cleanupPeriodDays` in its
+  settings to keep the whole 60.
 
 cctop is a personal project and is not affiliated with or endorsed by Anthropic.
 

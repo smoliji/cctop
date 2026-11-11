@@ -56,11 +56,11 @@ const data = (d: Partial<TranscriptData> = {}): TranscriptData => ({
 });
 const state = (s: Partial<ClaudeState> = {}): ClaudeState => ({ usage: null, skillUsage: {}, ...s });
 
-test('empty data still yields 7 days, newest first, today included', () => {
+test('empty data still yields 60 days, newest first, today included', () => {
   const o = buildOverview(data(), state(), 'today', NOW);
-  assert.equal(o.days.length, 7);
+  assert.equal(o.days.length, 60);
   assert.equal(o.days[0].date, '2026-10-21');
-  assert.equal(o.days[6].date, '2026-10-15');
+  assert.equal(o.days[59].date, '2026-08-23');
   assert.deepEqual(o.days[0], { date: '2026-10-21', tokensByModel: {}, tokens: 0, cost: null });
   assert.deepEqual(o.week, { tokens: 0, cost: null, avg: 0, peak: 0, peakDate: null });
   assert.equal(o.totals.tokens, 0);
@@ -129,6 +129,7 @@ test('week cost sums the priced days and skips empty ones', () => {
   );
   assert.equal(o.days[1].cost, null);
   assert.equal(o.week.cost, one * 2);
+  assert.equal(buildOverview(data({ responses: [response({ usage: u, timestamp: daysAgo(8) })] }), state(), '30d', NOW).week.cost, null);
   assert.equal(o.totals.cost, one * 2);
 });
 
@@ -374,10 +375,10 @@ test('helpers', () => {
 
 test('pending marks sections the scan has not reached', () => {
   const pending = (knownAfter: number, period: '7d' | '30d') => buildOverview(data({ knownAfter }), state(), period, NOW).pending;
-  assert.deepEqual(pending(-Infinity, '30d'), { days: false, period: false });
-  assert.deepEqual(pending(dayStart(NOW, 10), '7d'), { days: false, period: false });
-  assert.deepEqual(pending(dayStart(NOW, 10), '30d'), { days: false, period: true });
-  assert.deepEqual(pending(dayStart(NOW, 6), '7d'), { days: true, period: true }, 'a day start itself is not proven read');
+  assert.deepEqual(pending(-Infinity, '30d'), { days: false, history: false, period: false });
+  assert.deepEqual(pending(dayStart(NOW, 10), '7d'), { days: false, history: true, period: false });
+  assert.deepEqual(pending(dayStart(NOW, 10), '30d'), { days: false, history: true, period: true });
+  assert.deepEqual(pending(dayStart(NOW, 6), '7d'), { days: true, history: true, period: true }, 'a day start itself is not proven read');
   assert.equal(pending(dayStart(NOW, 2), '7d').days, true);
 });
 
@@ -392,5 +393,5 @@ test('recentDates returns 7 local dates newest first', () => {
   assert.equal(dates.length, 7);
   assert.equal(dates[0], '2026-10-21');
   assert.equal(dates[6], '2026-10-15');
-  assert.deepEqual(buildOverview(data(), state(), '7d', NOW).days.map((d) => d.date), dates);
+  assert.deepEqual(buildOverview(data(), state(), '7d', NOW).days.slice(0, 7).map((d) => d.date), dates);
 });

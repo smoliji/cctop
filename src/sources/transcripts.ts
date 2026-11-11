@@ -149,8 +149,8 @@ export interface Progress {
 export interface ScanOptions {
   /** Events before this are never shown; files last modified over a day earlier are not read. */
   since?: number;
-  /** On the first scan, once every file modified at or after this is read, `onPartial` gets the data so far. */
-  partialAt?: number;
+  /** On the first scan, once every file modified at or after one of these is read, `onPartial` gets the data so far. */
+  partialAt?: number[];
   onProgress?: (progress: Progress) => void;
   onPartial?: (data: TranscriptData) => void;
 }
@@ -248,13 +248,14 @@ export class TranscriptStore {
 
     const total = todo.length;
     if (total) onProgress?.({ done: 0, total });
-    let emitted = false;
+    const marks = this.merged || !onPartial ? [] : [...(partialAt ?? [])].sort((a, b) => b - a);
     let reported = Date.now();
     for (const [i, file] of todo.entries()) {
       if (this.closed) break;
-      if (!this.merged && onPartial && partialAt !== undefined && !emitted && file.mtimeMs < partialAt) {
-        emitted = true;
-        onPartial(this.merge(file.mtimeMs));
+      if (marks.length && file.mtimeMs < marks[0]!) {
+        // One file can pass several marks; the data after it covers them all.
+        while (marks.length && file.mtimeMs < marks[0]!) marks.shift();
+        onPartial!(this.merge(file.mtimeMs));
       }
       // On a failed read keep the previous events and leave the file unrecorded so the next refresh retries it.
       const events = await parseFile(file.path).catch(() => null);

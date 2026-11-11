@@ -176,7 +176,7 @@ test('closing mid-scan keeps the files parsed so far', async (t) => {
   });
   const store = new TranscriptStore(root, { cache });
   // The partial fires before the second file is read, so the scan stops after it.
-  const scan = store.refresh({ partialAt: Date.now() - 30 * MINUTE, onPartial: () => void store.close() });
+  const scan = store.refresh({ partialAt: [Date.now() - 30 * MINUTE], onPartial: () => void store.close() });
   await scan;
   await store.close();
   assert.deepEqual([...(await loadCache(cache, root, PARSER)).keys()].sort(), files.slice(0, 2).sort());

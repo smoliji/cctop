@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp, useInput, useWindowSize } from 'ink';
 import type { ClaudeState, Overview, Period, TranscriptData } from '../types.js';
 import type { Progress } from '../sources/transcripts.js';
-import { DEFAULT_VIEW, Screen, SKILLS_CHROME, TABS, type View } from './Screen.js';
+import { HORIZON_DAYS } from '../overview.js';
+import { DEFAULT_VIEW, HISTORY_CHROME, Screen, SKILLS_CHROME, TABS, type View } from './Screen.js';
 import { SKILL_SORTS, skillRows } from './Skills.js';
 
 export type Build = (data: TranscriptData, state: ClaudeState, period: Period, now: number) => Overview;
@@ -162,6 +163,9 @@ export function App({ initial, readState, scan, build, fetchUsage, interval, ver
   // The list can shrink under the stored offset, when the period changes or the lifetime counts give way to the period's.
   const last = Math.max(0, skillRows(overview, state).length - Math.max(1, rows - SKILLS_CHROME));
   const offset = Math.min(view.skillOffset, last);
+  // A taller terminal shows more days, so the bottom comes sooner.
+  const lastDay = Math.max(0, HORIZON_DAYS - Math.max(1, rows - HISTORY_CHROME));
+  const historyOffset = Math.min(view.historyOffset, lastDay);
 
   useInput((input, key) => {
     if (input === 'q' || (key.ctrl && input === 'c')) return exit();
@@ -174,10 +178,13 @@ export function App({ initial, readState, scan, build, fetchUsage, interval, ver
     const tab = Number(input);
     if (TABS[tab - 1]) return setView({ ...view, tab: TABS[tab - 1]! });
     if (key.tab) return setView({ ...view, tab: next(TABS, view.tab) });
-    if (view.tab !== 'skills') return;
-    if (input === 's') return setView({ ...view, skillSort: next(SKILL_SORTS, view.skillSort), skillOffset: 0 });
+    if (view.tab === 'skills' && input === 's') {
+      return setView({ ...view, skillSort: next(SKILL_SORTS, view.skillSort), skillOffset: 0 });
+    }
     const step = key.upArrow || input === 'k' ? -1 : key.downArrow || input === 'j' ? 1 : key.pageUp ? -10 : key.pageDown ? 10 : 0;
-    if (step) setView({ ...view, skillOffset: Math.min(last, Math.max(0, offset + step)) });
+    if (!step) return;
+    if (view.tab === 'skills') setView({ ...view, skillOffset: clamp(offset + step, last) });
+    if (view.tab === 'history') setView({ ...view, historyOffset: clamp(historyOffset + step, lastDay) });
   });
 
   return (
@@ -188,10 +195,12 @@ export function App({ initial, readState, scan, build, fetchUsage, interval, ver
       status={{ version, interval, refreshedAt, refreshing, progress, error: errors.state ?? errors.usage ?? errors.scan ?? errors.build }}
       columns={columns}
       rows={rows}
-      view={{ ...view, skillOffset: offset }}
+      view={{ ...view, skillOffset: offset, historyOffset }}
     />
   );
 }
+
+const clamp = (value: number, max: number) => Math.min(max, Math.max(0, value));
 
 const next = <T,>(list: T[], current: T): T => list[(list.indexOf(current) + 1) % list.length]!;
 

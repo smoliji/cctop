@@ -7,6 +7,7 @@ import { App, type Build, type Scan } from '../src/ui/App.js';
 import { DEFAULT_VIEW, Screen, type Status, type View } from '../src/ui/Screen.js';
 import type { ClaudeState, Overview, Period, TranscriptData } from '../src/types.js';
 import { DAY_CHROME, INDENT } from '../src/layout.js';
+import { HORIZON_DAYS, recentDates } from '../src/overview.js';
 import { MUTED } from '../src/format.js';
 import { axis } from '../src/ui/History.js';
 import { stripPairs } from '../src/ui/Totals.js';
@@ -67,7 +68,7 @@ const overview: Overview = {
       { label: 'Week', percent: 90, resetsAt: NOW + 3 * 24 * HOUR },
     ],
   },
-  pending: { days: false, period: false },
+  pending: { days: false, history: false, period: false },
 };
 
 const skillUsage = { 'review-pr': 30, distill: 4 };
@@ -306,7 +307,7 @@ test('the loading frame keeps the loaded height of the head and the history', ()
 });
 
 test('a partial scan shows history and holds back the period panels', () => {
-  const f = frame(120, 40, { ...overview, period: '30d', pending: { days: false, period: true } });
+  const f = frame(120, 40, { ...overview, period: '30d', pending: { days: false, history: true, period: true } });
   assert.match(f, /We 21 .*49M/);
   const ls = lines(f);
   const panels = ls.slice(ls.findIndex((l) => l.includes('TOP SKILLS'))).join('\n');
@@ -325,7 +326,7 @@ test('the skills tab shows lifetime counts while loading', () => {
 });
 
 test('the skills tab keeps lifetime counts until the period is read', () => {
-  const f = frame(120, 30, { ...overview, pending: { days: false, period: true } }, status, {
+  const f = frame(120, 30, { ...overview, pending: { days: false, history: true, period: true } }, status, {
     ...DEFAULT_VIEW,
     tab: 'skills',
     skillSort: 'tokens',
@@ -438,7 +439,7 @@ test('progress and data reach the screen', async () => {
 test('a partial result fills the history first', async () => {
   const pending = deferredScan();
   const partial: TranscriptData = { ...data, knownAfter: NOW - 10 * 24 * HOUR };
-  const build: Build = (d) => ({ ...overview, pending: { days: false, period: d === partial } });
+  const build: Build = (d) => ({ ...overview, pending: { days: false, history: d === partial, period: d === partial } });
   const { lastFrame, unmount } = app({ scan: pending.scan, build });
   await tick();
   pending.hooks.onPartial(partial);
@@ -813,5 +814,85 @@ test('a failed usage fetch shows in the header and keeps the cached limits', asy
   const f = text(lastFrame());
   assert.match(f, /used a model turn/);
   assert.match(f, /42%/);
+  unmount();
+});
+
+const month: Overview = {
+  ...overview,
+  days: recentDates(NOW, HORIZON_DAYS).map((date, i) => overview.days[i] ?? { date, tokensByModel: { 'opus-5-5': (i + 1) * 1e6 }, tokens: (i + 1) * 1e6, cost: i + 1 }),
+};
+const historyTab = (rows: number, offset = 0, o: Overview | null = month, s = status) =>
+  lines(frame(120, rows, o, s, { ...DEFAULT_VIEW, tab: 'history', historyOffset: offset }));
+
+test('the history tab lists as many days as the terminal holds', () => {
+  const ls = historyTab(30);
+  const f = ls.join('\n');
+  assert.match(f, /3 History/);
+  assert.match(f, /TOKENS · LAST 22 DAYS +avg/);
+  assert.match(f, /We 21 .*49M/);
+  assert.match(f, /^ {3}↓ 38 older *$/m);
+  assert.doesNotMatch(f, /LIMITS|TOP SKILLS/);
+  assert.match(ls.at(-1)!, /tab switch {2}↑↓ scroll {2}p period/);
+  assertFills(f, 120, 30);
+});
+
+test('the history tab scrolled back names its dates and sums only them', () => {
+  const f = historyTab(30, 5).join('\n');
+  assert.match(f, /TOKENS · 25 Sep – 16 Oct +avg 20M {2}peak 60M {2}22d 447M/);
+  assert.doesNotMatch(f, /We 21|Tu 20|Sa 24/);
+  assert.match(f, /^ {3}↑ 5 newer {3}↓ 33 older *$/m);
+});
+
+test('the history tab clamps an offset past the oldest day', () => {
+  assert.deepEqual(historyTab(30, 99), historyTab(30, 38));
+  assert.match(historyTab(30, 38).join('\n'), /^ {3}↑ 38 newer *$/m);
+});
+
+test('a tall terminal shows every day without a hint', () => {
+  const f = historyTab(68).join('\n');
+  assert.match(f, /TOKENS · LAST 60 DAYS/);
+  assert.doesNotMatch(f, /newer|older/);
+});
+
+test('the history tab holds a skeleton until every day is read', () => {
+  const partial = { ...month, pending: { days: false, history: true, period: false } };
+  const loaded = historyTab(30, 3);
+  const pending = historyTab(30, 3, partial);
+  assert.match(pending.join('\n'), /TOKENS · 27 Sep – 18 Oct *\n/);
+  assert.match(pending.join('\n'), /Su 18 {2}─+ *$/m);
+  assert.doesNotMatch(pending.join('\n'), /avg/);
+  assert.equal(pending.length, loaded.length);
+  assert.equal(pending.findIndex((l) => l.includes('↑ 3 newer')), loaded.findIndex((l) => l.includes('↑ 3 newer')));
+});
+
+const firstDay = (f: string | undefined) => /^ {3}(\w\w \d\d) /m.exec(text(f))![1];
+
+test('arrows scroll the history tab and leave the skills where they were', async () => {
+  const { lastFrame, stdin, unmount } = app({ build: () => ({ ...month, skills: named(60) }) });
+  await tick();
+  stdin.write('3');
+  await tick();
+  assert.equal(firstDay(lastFrame()), 'We 21');
+  stdin.write('j');
+  await tick();
+  assert.equal(firstDay(lastFrame()), 'Tu 20');
+  for (let i = 0; i < 5; i++) {
+    stdin.write('\x1b[6~');
+    await tick();
+  }
+  assert.match(text(lastFrame()), /↑ \d+ newer *$/m);
+  assert.doesNotMatch(text(lastFrame()), /older/);
+  stdin.write('2');
+  await tick();
+  assert.equal(firstSkill(lastFrame()), 0);
+  stdin.write('3');
+  await tick();
+  for (let i = 0; i < 5; i++) {
+    stdin.write('\x1b[5~');
+    await tick();
+  }
+  stdin.write('k');
+  await tick();
+  assert.equal(firstDay(lastFrame()), 'We 21');
   unmount();
 });

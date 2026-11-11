@@ -242,7 +242,7 @@ test('the first scan publishes the newest files once', async (t) => {
     partials.push({ keys: keys(d), knownAfter: d.knownAfter });
   const store = new TranscriptStore(root);
 
-  const data = await store.refresh({ partialAt: now - DAY, onPartial });
+  const data = await store.refresh({ partialAt: [now - DAY], onPartial });
   assert.deepEqual(partials, [{ keys: ['a:a'], knownAfter: statSync(b).mtimeMs }]);
   assert.deepEqual(keys(data), ['a:a', 'b:b', 'c:c']);
   assert.equal(data.knownAfter, -Infinity);
@@ -250,8 +250,22 @@ test('the first scan publishes the newest files once', async (t) => {
   appendFileSync(c, assistant({ requestId: 'c2' }, { id: 'c2' }) + '\n');
   const later = new Date(now - 2.5 * DAY);
   utimesSync(c, later, later);
-  assert.equal((await store.refresh({ partialAt: now - DAY, onPartial })).responses.length, 4);
+  assert.equal((await store.refresh({ partialAt: [now - DAY], onPartial })).responses.length, 4);
   assert.equal(partials.length, 1);
+});
+
+test('each partial mark publishes once, a file past several marks once for all', async (t) => {
+  const root = tmp(t);
+  const now = Date.now();
+  transcript(root, 'a', 0, now);
+  const b = transcript(root, 'b', 2 * DAY, now);
+  const c = transcript(root, 'c', 10 * DAY, now);
+  const knownAfter: number[] = [];
+  await new TranscriptStore(root).refresh({
+    partialAt: [now - 5 * DAY, now - DAY, now - 3 * DAY],
+    onPartial: (d) => knownAfter.push(d.knownAfter),
+  });
+  assert.deepEqual(knownAfter, [statSync(b).mtimeMs, statSync(c).mtimeMs]);
 });
 
 test('no partial when nothing older needs reading', async (t) => {
@@ -259,7 +273,7 @@ test('no partial when nothing older needs reading', async (t) => {
   transcript(root, 'a', 0);
   transcript(root, 'b', 1000);
   let partials = 0;
-  await new TranscriptStore(root).refresh({ partialAt: Date.now() - DAY, onPartial: () => partials++ });
+  await new TranscriptStore(root).refresh({ partialAt: [Date.now() - DAY], onPartial: () => partials++ });
   assert.equal(partials, 0);
 });
 

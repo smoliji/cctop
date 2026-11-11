@@ -20,18 +20,20 @@ export interface Status {
   error?: string;
 }
 
-export type Tab = 'overview' | 'skills';
-export const TABS: Tab[] = ['overview', 'skills'];
-const TAB_TITLES: Record<Tab, string> = { overview: 'Overview', skills: 'Skills' };
+export type Tab = 'overview' | 'skills' | 'history';
+export const TABS: Tab[] = ['overview', 'skills', 'history'];
+const TAB_TITLES: Record<Tab, string> = { overview: 'Overview', skills: 'Skills', history: 'History' };
 
 export interface View {
   tab: Tab;
   period: Period;
   skillSort: SkillSort;
   skillOffset: number;
+  /** Days back from today at the top of the History tab. */
+  historyOffset: number;
 }
 
-export const DEFAULT_VIEW: View = { tab: 'overview', period: '7d', skillSort: 'uses', skillOffset: 0 };
+export const DEFAULT_VIEW: View = { tab: 'overview', period: '7d', skillSort: 'uses', skillOffset: 0, historyOffset: 0 };
 
 interface Props {
   overview: Overview | null;
@@ -45,6 +47,8 @@ interface Props {
 
 // header, blank, title, column header, scroll hint, blank, footer
 export const SKILLS_CHROME = 7;
+// header, blank, title, axis, legend, scroll hint, blank, footer
+export const HISTORY_CHROME = 8;
 
 /**
  * One full frame. Limits come from `state` and draw at once; `overview` is null
@@ -76,6 +80,15 @@ export function Screen({ overview, state, now, status, columns, rows, view = DEF
           rows={Math.max(1, rows - SKILLS_CHROME)}
           width={layout.width}
           now={now}
+        />
+      ) : view.tab === 'history' ? (
+        <History
+          overview={overview}
+          now={now}
+          days={Math.max(1, rows - HISTORY_CHROME)}
+          bar={layout.dayBar}
+          palette={palette}
+          offset={view.historyOffset}
         />
       ) : (
         <>
@@ -164,7 +177,8 @@ const NOTES = ['* API list-price equivalent', '* list price'];
 function Footer({ error, tab, width }: { error?: string; tab: Tab; width: number }) {
   const keys: [string, string][] = [
     ['tab', 'switch'],
-    ...(tab === 'skills' ? ([['s', 'sort'], ['↑↓', 'scroll']] as [string, string][]) : []),
+    ...(tab === 'skills' ? ([['s', 'sort']] as [string, string][]) : []),
+    ...(tab !== 'overview' ? ([['↑↓', 'scroll']] as [string, string][]) : []),
     ['p', 'period'],
     ['r', 'refresh'],
     ['q', 'quit'],

@@ -12,6 +12,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [S
   tokens (`--no-usage` turns it off).
 - Tokens per day for the last 7 days with average, peak and weekly total, an
   API list-price cost estimate per day and a token scale under the bars.
+- History tab (`3`): tokens per day for the last 60 days, scrollable with the
+  arrows, with the dates shown in the title and the summary and scale over the
+  visible days. `--json` now lists 60 `days`.
 - Top skills (Skill tool calls and typed slash commands), top tools with MCP
   calls grouped by server, and the model mix by tokens.
 - Skills tab (`2`): every skill in the period with uses, tokens and cost spent

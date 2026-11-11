@@ -56,6 +56,14 @@ export function formatDay(date: string): string {
   return `${WEEKDAYS[d.getDay()]} ${pad2(d.getDate())}`;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "21 Oct" for a local `YYYY-MM-DD` date. */
+export function formatDate(date: string): string {
+  const d = parseDate(date);
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
 export function isWeekend(date: string): boolean {
   const day = parseDate(date).getDay();
   return day === 0 || day === 6;

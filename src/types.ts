@@ -139,7 +139,7 @@ export interface ModelShare {
 export interface Overview {
   now: number;
   period: Period;
-  /** The last 7 local days, newest first, today included even when empty. */
+  /** The last 60 local days, newest first, today included even when empty; the week covers the first 7. */
   days: DayRow[];
   week: { tokens: number; cost: number | null; avg: number; peak: number; peakDate: string | null };
   totals: {
@@ -160,5 +160,5 @@ export interface Overview {
   topAgents: Ranked[];
   usage: PlanUsage | null;
   /** Sections whose events are not all read yet because the scan is still on older files. */
-  pending: { days: boolean; period: boolean };
+  pending: { days: boolean; history: boolean; period: boolean };
 }

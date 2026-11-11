@@ -16,9 +16,13 @@ import type {
 
 const PERIOD_DAYS: Record<Period, number> = { today: 1, '7d': 7, '30d': 30 };
 export const HISTORY_DAYS = 7;
+/** Days the History tab scrolls through, longer than any period. */
+export const HORIZON_DAYS = 60;
 
+/** Oldest instant any tab can show. */
+export const horizon = (now: number) => dayStart(now, HORIZON_DAYS - 1);
 /** Oldest instant any period can show. */
-export const horizon = (now: number) => dayStart(now, Math.max(...Object.values(PERIOD_DAYS)) - 1);
+export const periodStart = (now: number) => dayStart(now, Math.max(...Object.values(PERIOD_DAYS)) - 1);
 /** Start of the per-day history. */
 export const historyStart = (now: number) => dayStart(now, HISTORY_DAYS - 1);
 
@@ -28,15 +32,16 @@ export function buildOverview(
   period: Period,
   now: number,
 ): Overview {
-  const days = lastDays(data.responses, now, HISTORY_DAYS);
+  const days = lastDays(data.responses, now, HORIZON_DAYS);
+  const week = days.slice(0, HISTORY_DAYS);
   const since = dayStart(now, PERIOD_DAYS[period] - 1);
   const responses = data.responses.filter((r) => r.timestamp >= since);
   const calls = data.toolCalls.filter((c) => c.timestamp >= since);
 
   const usage = sumUsage(responses.map((r) => r.usage));
   const cacheIn = usage.input + usage.cacheRead + usage.cacheWrite5m + usage.cacheWrite1h;
-  const peakDay = days.reduce((a, b) => (b.tokens > a.tokens ? b : a));
-  const weekTokens = sum(days.map((d) => d.tokens));
+  const peakDay = week.reduce((a, b) => (b.tokens > a.tokens ? b : a));
+  const weekTokens = sum(week.map((d) => d.tokens));
 
   const skills = skillRows(data, since, state);
 
@@ -63,8 +68,8 @@ export function buildOverview(
     days,
     week: {
       tokens: weekTokens,
-      cost: sumKnown(days.filter((d) => d.tokens > 0).map((d) => d.cost)),
-      avg: weekTokens / days.length,
+      cost: sumKnown(week.filter((d) => d.tokens > 0).map((d) => d.cost)),
+      avg: weekTokens / week.length,
       peak: peakDay.tokens,
       peakDate: peakDay.tokens > 0 ? peakDay.date : null,
     },
@@ -85,7 +90,11 @@ export function buildOverview(
     topAgents: rank([...agents.values()]),
     usage: state.usage,
     // Events after `knownAfter` are known; one exactly at a day start is not proven read yet.
-    pending: { days: data.knownAfter >= historyStart(now), period: data.knownAfter >= since },
+    pending: {
+      days: data.knownAfter >= historyStart(now),
+      history: data.knownAfter >= horizon(now),
+      period: data.knownAfter >= since,
+    },
   };
 }
 

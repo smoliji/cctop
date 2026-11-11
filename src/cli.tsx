@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { render, renderToString } from 'ink';
-import { buildOverview, historyStart, horizon } from './overview.js';
+import { buildOverview, historyStart, horizon, periodStart } from './overview.js';
 import { cachePath } from './sources/cache.js';
 import { readClaudeState } from './sources/claudeJson.js';
 import { fetchUsage } from './sources/usage.js';
@@ -22,7 +22,7 @@ Options:
   --interval <s>  seconds between refreshes (default 60)
   --dir <path>    Claude config dir (default $CLAUDE_CONFIG_DIR or ~/.claude)
   --print         render one frame to stdout and exit (COLUMNS, LINES set the size when piped)
-  --tab <name>    tab for --print: overview or skills (default overview)
+  --tab <name>    tab for --print: overview, skills or history (default overview)
   --json          print the overview as JSON and exit
   --no-cache      do not read or write the transcript cache
   --no-usage      do not run \`claude -p /usage\` to refresh the plan limits
@@ -30,12 +30,12 @@ Options:
   -v, --version   show the version
 
 Keys:
-  1, 2, tab  switch between Overview and Skills
-  s          sort skills (uses, tokens, recent)
-  ↑↓         scroll skills
-  p          cycle period (today, 7d, 30d)
-  r          refresh now
-  q          quit
+  1, 2, 3, tab  switch between Overview, Skills and History
+  s             sort skills (uses, tokens, recent)
+  ↑↓            scroll skills or days
+  p             cycle period (today, 7d, 30d)
+  r             refresh now
+  q             quit
 
 cctop reads local files: transcripts in <dir>/projects and the cached plan
 usage in <dir>/.claude.json, or ~/.claude.json when that does not exist. Claude
@@ -113,7 +113,7 @@ async function main() {
   const readState = () => readClaudeState(claudeJson);
   const scan = (hooks: Pick<ScanOptions, 'onProgress' | 'onPartial'> = {}) => {
     const now = Date.now();
-    return store.refresh({ since: horizon(now), partialAt: historyStart(now), ...hooks });
+    return store.refresh({ since: horizon(now), partialAt: [historyStart(now), periodStart(now)], ...hooks });
   };
 
   const tty = process.stdout.isTTY;

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { DayRow, Overview } from '../types.js';
-import { barCells, BLOCK, formatCost, formatDay, formatTokens, isWeekend, MUTED, splitCells } from '../format.js';
+import { barCells, BLOCK, formatCost, formatDate, formatDay, formatTokens, isWeekend, MUTED, splitCells } from '../format.js';
 import { INDENT } from '../layout.js';
-import { recentDates } from '../overview.js';
+import { HISTORY_DAYS, HORIZON_DAYS, recentDates } from '../overview.js';
 
 interface Props {
   overview: Overview | null;
@@ -11,20 +11,32 @@ interface Props {
   days: number;
   bar: number;
   palette: Map<string, string>;
+  /** History tab: scrolls through every day of the horizon, this many days back, with a scroll hint row. */
+  offset?: number;
 }
 
-const titleOf = (days: number) => (days === 1 ? 'TOKENS · TODAY' : `TOKENS · LAST ${days} DAYS`);
+const titleOf = (dates: string[], start: number) =>
+  start > 0
+    ? `TOKENS · ${formatDate(dates.at(-1)!)} – ${formatDate(dates[0]!)}`
+    : dates.length === 1
+      ? 'TOKENS · TODAY'
+      : `TOKENS · LAST ${dates.length} DAYS`;
 
-export function History({ overview, now, days, bar, palette }: Props) {
-  if (!overview || overview.pending.days) return <Skeleton now={now} days={days} bar={bar} />;
+export function History({ overview, now, days, bar, palette, offset }: Props) {
+  const scroll = offset !== undefined;
+  const span = scroll ? HORIZON_DAYS : HISTORY_DAYS;
+  const start = Math.max(0, Math.min(offset ?? 0, span - days));
+  const pending = !overview || (scroll ? overview.pending.history : overview.pending.days);
+  const hint = scroll && <ScrollHint newer={start} older={span - start - Math.min(days, span)} />;
+  if (pending) return <Skeleton dates={recentDates(now, span).slice(start, start + days)} start={start} bar={bar} hint={hint} />;
   // Summary and scale cover the shown rows only, so a short terminal never refers to a day it hides.
-  const rows = overview.days.slice(0, days);
+  const rows = overview.days.slice(start, start + days);
   const { tokens, avg, peak, cost } = summary(rows);
   const models = modelOrder(rows);
   return (
     <Box flexDirection="column">
       <Box justifyContent="space-between" gap={2}>
-        <Text bold>{titleOf(rows.length)}</Text>
+        <Text bold>{titleOf(rows.map((d) => d.date), start)}</Text>
         <Text color={MUTED} wrap="truncate-start">
           avg {formatTokens(avg)}  peak {formatTokens(peak)}  {rows.length}d {formatTokens(tokens)}
           {cost === null ? '' : `  ${formatCost(cost)}*`}
@@ -32,19 +44,28 @@ export function History({ overview, now, days, bar, palette }: Props) {
       </Box>
       <Box flexDirection="column" paddingLeft={INDENT}>
         {rows.map((day, i) => (
-          <Day key={day.date} day={day} today={i === 0} models={models} peak={peak} bar={bar} palette={palette} />
+          <Day key={day.date} day={day} today={start + i === 0} models={models} peak={peak} bar={bar} palette={palette} />
         ))}
         <Text color={MUTED} wrap="truncate-end">
           {' '.repeat(LABEL)}
           {axis(peak, bar)}
         </Text>
         {models.length === 0 ? (
-          <Text color={MUTED}>no tokens in the last days</Text>
+          <Text color={MUTED}>no tokens in {start > 0 ? 'these' : 'the last'} days</Text>
         ) : (
           <Legend models={models} palette={palette} />
         )}
+        {hint}
       </Box>
     </Box>
+  );
+}
+
+function ScrollHint({ newer, older }: { newer: number; older: number }) {
+  return (
+    <Text color={MUTED} wrap="truncate-end">
+      {[newer > 0 && `↑ ${newer} newer`, older > 0 && `↓ ${older} older`].filter(Boolean).join('   ') || ' '}
+    </Text>
   );
 }
 
@@ -86,24 +107,30 @@ function summary(rows: DayRow[]) {
   };
 }
 
+interface SkeletonProps {
+  dates: string[];
+  start: number;
+  bar: number;
+  hint: React.ReactNode;
+}
+
 /** Same rows as the loaded history, so the frame does not move when the data lands. The header shows the progress. */
-function Skeleton({ now, days, bar }: { now: number; days: number; bar: number }) {
+function Skeleton({ dates, start, bar, hint }: SkeletonProps) {
   return (
     <Box flexDirection="column">
-      <Text bold>{titleOf(days)}</Text>
+      <Text bold>{titleOf(dates, start)}</Text>
       <Box flexDirection="column" paddingLeft={INDENT}>
-        {recentDates(now)
-          .slice(0, days)
-          .map((date, i) => (
-            <Text key={date} wrap="truncate-end">
-              <DayLabel date={date} today={i === 0} />
-              {'  '}
-              <Text color={MUTED}>{'─'.repeat(bar)}</Text>
-            </Text>
-          ))}
+        {dates.map((date, i) => (
+          <Text key={date} wrap="truncate-end">
+            <DayLabel date={date} today={start + i === 0} />
+            {'  '}
+            <Text color={MUTED}>{'─'.repeat(bar)}</Text>
+          </Text>
+        ))}
         {/* Hold the axis and legend rows. */}
         <Text> </Text>
         <Text> </Text>
+        {hint}
       </Box>
     </Box>
   );
